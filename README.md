@@ -14,6 +14,10 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 
 *Ana sayfa, VPN, Wi-Fi, Ağ ve Cihaz ekranları.*
 
+<p align="center"><img src="docs/ekranlar-halka.jpg" alt="Cihaz payı halkası ve günlük döküm" width="800"></p>
+
+*Yeni: cihazların bugünkü veri payı (halka grafiği) ve Veri sayfasında bir güne dokununca VPN / Direkt dökümü. Örnek verilerle hazırlanmış tasarım görseli.*
+
 ## Özellikler
 
 - **Ana sayfa:** operatör, ağ tipi (LTE-A / CA), sinyal yüzdesi ve anlık hız; CPU, bellek, çalışma süresi ve yük ortalaması; modemi yeniden başlatma
@@ -24,7 +28,7 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 - **VPN:** KediRay ve xDivine-Ray durumu, düğüm / profil yönetimi (link ya da JSON ekle, elle ekle, sertifikayı sabitle), başlat / durdur / yeniden başlat
 - **KediRay güncellemesi:** yeni sürüm var mı denetle; modem indirip SHA256 ile doğrulayıp kurar
 - **Günlük:** KediRay / Xray günlüğü, hata gruplama ve ne yapmalı önerileri
-- **Veri kullanımı:** günlük, haftalık ve aylık
+- **Veri kullanımı:** günlük, haftalık ve aylık; son 14 gün çubuklarından bir güne dokununca o günün **VPN / Direkt / Toplam** trafiği (indirme ve yükleme ayrı; KediRay sayacından, son 30 gün)
 - **Uyarılar ve diğer:** VPN kopma uyarısı, birden fazla modem desteği
 - **Temalar:** açık/koyu mod, hazır temalar, kendi renklerin ve bağlantıdan içe alma
 - **Gizlilik:** IP / MAC ve sunucu adreslerini gizle (ekran görüntüsü paylaşırken işe yarar); isteğe bağlı anonim kullanım sayısı (ilk girişte sorulur, "Evet" demezsen hiçbir şey gönderilmez)
@@ -58,6 +62,10 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 
 *Home, VPN, Wi-Fi, Network and Devices screens.*
 
+<p align="center"><img src="docs/ekranlar-halka.jpg" alt="Per-device share donut and daily breakdown" width="800"></p>
+
+*New: each device's share of today's data (donut chart), and tapping a day on the Data page shows its VPN / Direct breakdown. Design preview made with sample data.*
+
 ### Features
 
 - **Home:** operator, network type (LTE-A / CA), signal percentage and live speed; CPU, memory, uptime and load average; modem reboot
@@ -68,7 +76,7 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 - **VPN:** KediRay and xDivine-Ray status, node / profile management (add by link or JSON, add by hand, pin the certificate), start / stop / restart
 - **KediRay updates:** check for a new version; the modem downloads it, verifies SHA256 and installs it
 - **Log:** KediRay / Xray log with error grouping and suggested fixes
-- **Data usage:** daily, weekly and monthly
+- **Data usage:** daily, weekly and monthly; tap a day in the last-14-days bars to see its **VPN / Direct / Total** traffic (download and upload separately; from the KediRay counters, last 30 days)
 - **Alerts and more:** VPN-drop alert, multiple modems
 - **Themes:** light/dark mode, ready-made themes, your own colors and import from a link
 - **Privacy:** hide IP / MAC and server addresses (handy for screenshots); optional anonymous usage count (asked on first launch, nothing is sent unless you say yes)
