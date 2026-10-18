@@ -20,7 +20,7 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 - **Modem verileri:** SIM, hücre, bant ve kalite bilgileri (PCC / SCC: bant genişliği, fiziksel hücre kimliği, EARFCN, RSSI, RSRP, RSRQ, SINR)
 - **Akıllı bant seçimi:** seçilen bantları tek tek dener, hız ve sinyale göre en iyisini seçer
 - **Wi-Fi:** ağları açıp kapatma, ad / şifre / kanal düzenleme, ağa bağlı istemciler ve "Wi-Fi'dan engelle"
-- **Cihazlar:** bağlı cihazlar, bağlı süre, cihaz başına yön (**VPN / Direkt**), engelleme; IP ve MAC gizleme
+- **Cihazlar:** bağlı cihazlar, bağlı süre, cihaz başına yön (**VPN / Direkt**), engelleme; IP ve MAC gizleme; bugünkü veri kullanımının cihazlara dağılımı (halka grafiği)
 - **VPN:** KediRay ve xDivine-Ray durumu, düğüm / profil yönetimi (link ya da JSON ekle, elle ekle, sertifikayı sabitle), başlat / durdur / yeniden başlat
 - **KediRay güncellemesi:** yeni sürüm var mı denetle; modem indirip SHA256 ile doğrulayıp kurar
 - **Günlük:** KediRay / Xray günlüğü, hata gruplama ve ne yapmalı önerileri
@@ -64,7 +64,7 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 - **Modem data:** SIM, cell, band and quality info (PCC / SCC: bandwidth, physical cell ID, EARFCN, RSSI, RSRP, RSRQ, SINR)
 - **Smart band selection:** tries each chosen band in turn and picks the best by speed and signal
 - **Wi-Fi:** switch networks on/off, edit name / password / channel, clients per network and "block from Wi-Fi"
-- **Devices:** connected devices, connected time, per-device route (**VPN / Direct**), blocking; hide IP and MAC
+- **Devices:** connected devices, connected time, per-device route (**VPN / Direct**), blocking; hide IP and MAC; today's data usage per device (donut chart)
 - **VPN:** KediRay and xDivine-Ray status, node / profile management (add by link or JSON, add by hand, pin the certificate), start / stop / restart
 - **KediRay updates:** check for a new version; the modem downloads it, verifies SHA256 and installs it
 - **Log:** KediRay / Xray log with error grouping and suggested fixes
