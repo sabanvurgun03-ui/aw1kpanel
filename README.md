@@ -16,23 +16,28 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 
 ## Özellikler
 
-- **Ana sayfa:** operatör, bağlantı türü (örn. LTE-A 2CA, B3+B3), sinyal yüzdesi, canlı yükleme/indirme hızı; CPU, bellek, çalışma süresi ve yük ortalaması; VPN durumu
-- **VPN:** KediRay'i çalıştır, durdur, yeniden başlat; sunucular arasında "Buna geç"; link ya da JSON ile sunucu ekle, elle düğüm ekle, sertifikayı sabitle
-- **xDivine-Ray profilleri:** link ya da JSON ekleyerek profil yönet
-- **Wi-Fi:** ağlar (SSID, radyo, şifreleme), her ağa bağlı istemciler (sinyal, hız, bağlı süre, trafik, yön) ve "Wi-Fi'dan engelle"
-- **Ağ:** bağlantı durumu, operatör, ülke, teknoloji, bağlantı süresi, gönderilen/alınan veri; PCC ve SCC bantları için bant genişliği, fiziksel hücre kimliği, EARFCN, RSSI, RSRP, RSRQ, SINR
-- **Cihazlar:** bağlı cihaz listesi, bağlı süre, her cihaz için yön seçimi (**VPN / Direkt**) ve **Engelle**
-- **Gizlilik:** IP / MAC adreslerini ve sunucu adreslerini gizle (ekran görüntüsü paylaşırken işe yarar)
+- **Ana sayfa:** operatör, ağ tipi (LTE-A / CA), sinyal yüzdesi ve anlık hız; CPU, bellek, çalışma süresi ve yük ortalaması; modemi yeniden başlatma
+- **Modem verileri:** SIM, hücre, bant ve kalite bilgileri (PCC / SCC: bant genişliği, fiziksel hücre kimliği, EARFCN, RSSI, RSRP, RSRQ, SINR)
+- **Akıllı bant seçimi:** seçilen bantları tek tek dener, hız ve sinyale göre en iyisini seçer
+- **Wi-Fi:** ağları açıp kapatma, ad / şifre / kanal düzenleme, ağa bağlı istemciler ve "Wi-Fi'dan engelle"
+- **Cihazlar:** bağlı cihazlar, bağlı süre, cihaz başına yön (**VPN / Direkt**), engelleme; IP ve MAC gizleme
+- **VPN:** KediRay ve xDivine-Ray durumu, düğüm / profil yönetimi (link ya da JSON ekle, elle ekle, sertifikayı sabitle), başlat / durdur / yeniden başlat
+- **KediRay güncellemesi:** yeni sürüm var mı denetle; modem indirip SHA256 ile doğrulayıp kurar
+- **Günlük:** KediRay / Xray günlüğü, hata gruplama ve ne yapmalı önerileri
+- **Veri kullanımı:** günlük, haftalık ve aylık
+- **Uyarılar ve diğer:** VPN kopma uyarısı, birden fazla modem desteği
+- **Temalar:** açık/koyu mod, hazır temalar, kendi renklerin ve bağlantıdan içe alma
+- **Gizlilik:** IP / MAC ve sunucu adreslerini gizle (ekran görüntüsü paylaşırken işe yarar); isteğe bağlı anonim kullanım sayısı (ilk girişte sorulur, "Evet" demezsen hiçbir şey gönderilmez)
 
 ## Kurulum
 
-1. **Modem tarafı:** uygulama KediRay'in modem eklentisini kullanır. KediRay'i kur: [KediRay kurulum](https://github.com/sabanvurgun03-ui/kediray#kurulum). Eklenti (`aw1k` rpcd modülü) onunla birlikte gelir.
-2. **Uygulama:** [KediRay sürümlerinden](https://github.com/sabanvurgun03-ui/kediray/releases) en son `Kediray-*.apk` dosyasını indirip telefona kur (bilinmeyen kaynaklardan kuruluma izin vermen gerekebilir).
-3. Uygulamayı aç ve modemine bağlan (varsayılan LuCI adresi `192.168.1.1`).
+1. **Modem tarafı:** modemde **KediRay 1.19.36 veya yenisi** kurulu olmalı (uygulamanın modem eklentisi onunla gelir): [KediRay kurulum](https://github.com/sabanvurgun03-ui/kediray#kurulum).
+2. **Uygulama:** [Sürümler](https://github.com/sabanvurgun03-ui/aw1kpanel/releases) sayfasından en son `.apk` dosyasını indir, telefonda "bilinmeyen kaynaklardan kurulum" iznini ver ve aç.
+3. Telefon modemin Wi-Fi ağına bağlı olsun. Adres genelde `192.168.1.1`, kullanıcı `root`.
 
 ## Notlar
 
-- Test edilen cihaz: Arcadyan AW1000 (DivineWRT / OpenWrt, LuCI).
+- Test edilen cihaz: Arcadyan AW1000 (DivineWRT / OpenWrt, LuCI, QModem).
 - Geri bildirim ve sorunlar için bu depodaki **Issues** bölümünü kullanabilirsin.
 
 ## Destek
@@ -55,23 +60,28 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 
 ### Features
 
-- **Home:** operator, connection type (e.g. LTE-A 2CA, B3+B3), signal percentage, live upload/download speed; CPU, memory, uptime and load average; VPN status
-- **VPN:** start, stop and restart KediRay; "switch to this" between servers; add servers by link or JSON, add a node by hand, pin the certificate
-- **xDivine-Ray profiles:** manage profiles by adding a link or JSON
-- **Wi-Fi:** networks (SSID, radio, encryption), clients per network (signal, rate, connected time, traffic, route) and "block from Wi-Fi"
-- **Network:** link status, operator, country, technology, connection time, sent/received data; PCC and SCC band details: bandwidth, physical cell ID, EARFCN, RSSI, RSRP, RSRQ, SINR
-- **Devices:** connected device list, connected time, per-device route (**VPN / Direct**) and **Block**
-- **Privacy:** hide IP / MAC and server addresses (handy when sharing screenshots)
+- **Home:** operator, network type (LTE-A / CA), signal percentage and live speed; CPU, memory, uptime and load average; modem reboot
+- **Modem data:** SIM, cell, band and quality info (PCC / SCC: bandwidth, physical cell ID, EARFCN, RSSI, RSRP, RSRQ, SINR)
+- **Smart band selection:** tries each chosen band in turn and picks the best by speed and signal
+- **Wi-Fi:** switch networks on/off, edit name / password / channel, clients per network and "block from Wi-Fi"
+- **Devices:** connected devices, connected time, per-device route (**VPN / Direct**), blocking; hide IP and MAC
+- **VPN:** KediRay and xDivine-Ray status, node / profile management (add by link or JSON, add by hand, pin the certificate), start / stop / restart
+- **KediRay updates:** check for a new version; the modem downloads it, verifies SHA256 and installs it
+- **Log:** KediRay / Xray log with error grouping and suggested fixes
+- **Data usage:** daily, weekly and monthly
+- **Alerts and more:** VPN-drop alert, multiple modems
+- **Themes:** light/dark mode, ready-made themes, your own colors and import from a link
+- **Privacy:** hide IP / MAC and server addresses (handy for screenshots); optional anonymous usage count (asked on first launch, nothing is sent unless you say yes)
 
 ### Install
 
-1. **Router side:** the app uses KediRay's router add-on. Install KediRay: [KediRay install](https://github.com/sabanvurgun03-ui/kediray#english). The `aw1k` rpcd module ships with it.
-2. **App:** download the latest `Kediray-*.apk` from the [KediRay releases](https://github.com/sabanvurgun03-ui/kediray/releases) and install it on your phone (you may need to allow installs from unknown sources).
-3. Open the app and connect to your router (default LuCI address `192.168.1.1`).
+1. **Router side:** **KediRay 1.19.36 or newer** must be installed on the modem (the app's router add-on ships with it): [KediRay install](https://github.com/sabanvurgun03-ui/kediray#english).
+2. **App:** download the latest `.apk` from the [Releases](https://github.com/sabanvurgun03-ui/aw1kpanel/releases) page, allow "install from unknown sources" and open it.
+3. Your phone must be on the modem's Wi-Fi. The address is usually `192.168.1.1`, user `root`.
 
 ### Notes
 
-- Tested device: Arcadyan AW1000 (DivineWRT / OpenWrt, LuCI).
+- Tested device: Arcadyan AW1000 (DivineWRT / OpenWrt, LuCI, QModem).
 - Use **Issues** in this repo for feedback and problems.
 
 ### Support
