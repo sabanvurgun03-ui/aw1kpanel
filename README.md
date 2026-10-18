@@ -32,7 +32,7 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 ## Kurulum
 
 1. **Modem tarafı:** modemde **KediRay 1.19.36 veya yenisi** kurulu olmalı (uygulamanın modem eklentisi onunla gelir): [KediRay kurulum](https://github.com/sabanvurgun03-ui/kediray#kurulum).
-2. **Uygulama:** [Sürümler](https://github.com/sabanvurgun03-ui/aw1kpanel/releases) sayfasından en son `.apk` dosyasını indir, telefonda "bilinmeyen kaynaklardan kurulum" iznini ver ve aç.
+2. **Uygulama:** [Kediray-0.32.apk](https://github.com/sabanvurgun03-ui/aw1kpanel/raw/main/apk/Kediray-0.32.apk) dosyasını indir (`apk/` klasörü; SHA256 değeri `apk/sha256sums` içinde), telefonda "bilinmeyen kaynaklardan kurulum" iznini ver ve aç.
 3. Telefon modemin Wi-Fi ağına bağlı olsun. Adres genelde `192.168.1.1`, kullanıcı `root`.
 
 ## Notlar
@@ -76,7 +76,7 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 ### Install
 
 1. **Router side:** **KediRay 1.19.36 or newer** must be installed on the modem (the app's router add-on ships with it): [KediRay install](https://github.com/sabanvurgun03-ui/kediray#english).
-2. **App:** download the latest `.apk` from the [Releases](https://github.com/sabanvurgun03-ui/aw1kpanel/releases) page, allow "install from unknown sources" and open it.
+2. **App:** download [Kediray-0.32.apk](https://github.com/sabanvurgun03-ui/aw1kpanel/raw/main/apk/Kediray-0.32.apk) (in the `apk/` folder; SHA256 in `apk/sha256sums`), allow "install from unknown sources" and open it.
 3. Your phone must be on the modem's Wi-Fi. The address is usually `192.168.1.1`, user `root`.
 
 ### Notes
