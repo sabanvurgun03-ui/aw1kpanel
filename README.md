@@ -12,7 +12,11 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 
 <p align="center"><img src="docs/ekranlar.jpg" alt="AW1K Panel ekranları"></p>
 
-*Ana sayfa, VPN, Wi-Fi, Ağ ve Cihaz ekranları.*
+*Ana sayfa, VPN, Wi-Fi, Ağ ve Band kilidi ekranları (0.36).*
+
+<p align="center"><img src="docs/ekranlar-ayarlar.jpg" alt="KediRay ayarları ve uygulama ayarları" width="560"></p>
+
+*KediRay ayarları (modemdeki Ayarlar sayfasının tamamı uygulamada) ve uygulama Ayarlar sayfası. Görseller örnek verilerle hazırlanmış tasarım görselleridir.*
 
 <p align="center"><img src="docs/ekranlar-halka.jpg" alt="Cihaz payı halkası ve günlük döküm" width="800"></p>
 
@@ -20,12 +24,13 @@ Arcadyan AW1000 (OpenWrt/LuCI) modemin için Android uygulaması. Modemin durumu
 
 ## Özellikler
 
-- **Ana sayfa:** operatör, ağ tipi (LTE-A / CA), sinyal yüzdesi ve anlık hız; CPU, bellek, çalışma süresi ve yük ortalaması; modemi yeniden başlatma
+- **Ana sayfa:** operatör, ağ tipi (LTE-A / CA), sinyal halkası ve anlık hız; CPU / bellek göstergeleri ve çalışma süresi; VPN sunucusunu ana sayfadan seçme ve ping
 - **Modem verileri:** SIM, hücre, bant ve kalite bilgileri (PCC / SCC: bant genişliği, fiziksel hücre kimliği, EARFCN, RSSI, RSRP, RSRQ, SINR)
 - **Akıllı bant seçimi:** seçilen bantları tek tek dener, hız ve sinyale göre en iyisini seçer
 - **Wi-Fi:** ağları açıp kapatma, ad / şifre / kanal düzenleme, ağa bağlı istemciler ve "Wi-Fi'dan engelle"
 - **Cihazlar:** bağlı cihazlar, bağlı süre, cihaz başına yön (**VPN / Direkt**), engelleme; IP ve MAC gizleme; bugünkü veri kullanımının cihazlara dağılımı (halka grafiği)
-- **VPN:** KediRay ve xDivine-Ray durumu, düğüm / profil yönetimi (link ya da JSON ekle, elle ekle, sertifikayı sabitle), başlat / durdur / yeniden başlat
+- **VPN:** KediRay ve xDivine-Ray durumu, düğüm / profil yönetimi (link ya da JSON ekle, elle ekle, sertifikayı sabitle), sunucu başına ping ve "Tümünü test et", başlat / durdur / yeniden başlat
+- **KediRay ayarları:** modemdeki Ayarlar sayfasının tamamı (Genel, DNS, Kararlılık, Abonelik, Gelişmiş, Bant); "Kaydet ve uygula" ile modeme yazılır
 - **KediRay güncellemesi:** yeni sürüm var mı denetle; modem indirip SHA256 ile doğrulayıp kurar
 - **Günlük:** KediRay / Xray günlüğü, hata gruplama ve ne yapmalı önerileri
 - **Veri kullanımı:** günlük, haftalık ve aylık; son 14 gün çubuklarından bir güne dokununca o günün **VPN / Direkt / Toplam** trafiği (indirme ve yükleme ayrı; KediRay sayacından, son 30 gün)
@@ -60,7 +65,11 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 
 <p align="center"><img src="docs/ekranlar.jpg" alt="AW1K Panel screens"></p>
 
-*Home, VPN, Wi-Fi, Network and Devices screens.*
+*Home, VPN, Wi-Fi, Network and Band lock screens (0.36).*
+
+<p align="center"><img src="docs/ekranlar-ayarlar.jpg" alt="KediRay settings and app settings" width="560"></p>
+
+*KediRay settings (the modem's whole Settings page, now in the app) and the app's Settings page. Images are design previews made with sample data.*
 
 <p align="center"><img src="docs/ekranlar-halka.jpg" alt="Per-device share donut and daily breakdown" width="800"></p>
 
@@ -68,12 +77,13 @@ Android app for the Arcadyan AW1000 (OpenWrt/LuCI) modem. Check the modem, conne
 
 ### Features
 
-- **Home:** operator, network type (LTE-A / CA), signal percentage and live speed; CPU, memory, uptime and load average; modem reboot
+- **Home:** operator, network type (LTE-A / CA), signal ring and live speed; CPU / memory gauges and uptime; pick the VPN server and ping right from the home page
 - **Modem data:** SIM, cell, band and quality info (PCC / SCC: bandwidth, physical cell ID, EARFCN, RSSI, RSRP, RSRQ, SINR)
 - **Smart band selection:** tries each chosen band in turn and picks the best by speed and signal
 - **Wi-Fi:** switch networks on/off, edit name / password / channel, clients per network and "block from Wi-Fi"
 - **Devices:** connected devices, connected time, per-device route (**VPN / Direct**), blocking; hide IP and MAC; today's data usage per device (donut chart)
-- **VPN:** KediRay and xDivine-Ray status, node / profile management (add by link or JSON, add by hand, pin the certificate), start / stop / restart
+- **VPN:** KediRay and xDivine-Ray status, node / profile management (add by link or JSON, add by hand, pin the certificate), per-server ping and "Test all", start / stop / restart
+- **KediRay settings:** the modem's whole Settings page (General, DNS, Stability, Subscription, Advanced, Band); "Save and apply" writes it to the modem
 - **KediRay updates:** check for a new version; the modem downloads it, verifies SHA256 and installs it
 - **Log:** KediRay / Xray log with error grouping and suggested fixes
 - **Data usage:** daily, weekly and monthly; tap a day in the last-14-days bars to see its **VPN / Direct / Total** traffic (download and upload separately; from the KediRay counters, last 30 days)
