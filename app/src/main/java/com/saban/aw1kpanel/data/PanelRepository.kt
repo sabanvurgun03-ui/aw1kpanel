@@ -473,8 +473,9 @@ class PanelRepository(private val client: UbusClient) {
     }
 
     /** Wi-Fi'ye bağlı istemciler (aw1k eklentisi: hostapd + bağlanma zamanı takibi). */
-    /** `iw station dump` sinyal vermediyse bir sonraki deneme zamanı (ms). */
-    private var iwRetryAt = 0L
+    /** `iw station dump`'tan okunan sinyaller (mac -> dBm) ve okunma zamanı. */
+    private var iwSig: Map<String, Int> = emptyMap()
+    private var iwSigAt = 0L
 
     suspend fun wifiClients(networks: List<WifiNetwork>): List<WifiClient> {
         val o = client.call("aw1k", "wifi_clients")
@@ -510,8 +511,9 @@ class PanelRepository(private val client: UbusClient) {
                 for (k in 0 until a.length()) {
                     val e = a.getJSONObject(k)
                     if (e.has("connected_time")) assocTimes[e.optString("mac").lowercase()] = e.optLong("connected_time")
-                    val sg = e.optInt("signal", 0).takeIf { it != 0 } ?: e.optInt("signal_avg", 0)
-                    if (sg != 0) assocSignal[e.optString("mac").lowercase()] = sg
+                    val sg = e.optInt("signal", 0).takeIf { it != 0 && it > -95 }
+                        ?: e.optInt("signal_avg", 0).takeIf { it != 0 && it > -95 }
+                    if (sg != null) assocSignal[e.optString("mac").lowercase()] = sg
                 }
             }
             clients.keys().forEach { mac ->
@@ -526,7 +528,7 @@ class PanelRepository(private val client: UbusClient) {
                     ssid = net?.ssid ?: name,
                     band = if (freq >= 5000) "5 GHz" else "2.4 GHz",
                     // Bazı sürücüler hostapd'ye sinyali 0 verir: iwinfo değeri kullanılır; o da yoksa 0 = bilinmiyor.
-                    signal = c.optInt("signal").takeIf { it != 0 } ?: assocSignal[key] ?: 0,
+                    signal = c.optInt("signal").takeIf { it != 0 && it > -95 } ?: assocSignal[key] ?: 0,
                     rxBytes = c.optJSONObject("bytes")?.optLong("rx") ?: 0,
                     txBytes = c.optJSONObject("bytes")?.optLong("tx") ?: 0,
                     rxMbps = ((c.optJSONObject("rate")?.optLong("rx") ?: 0) / 1_000_000).toInt(),
@@ -536,38 +538,54 @@ class PanelRepository(private val client: UbusClient) {
             }
         }
         // Sinyal hâlâ bilinmiyorsa (0) Wi-Fi sürücüsünden oku: `iw dev <arayüz> station dump`
+        // Bu modemde (ath11k) hostapd/iwinfo "signal" 0, "signal avg" sabit -95 veriyor: ikisi de geçersiz.
+        // Gerçek değer `iw station dump` içindeki "avg ack signal" (yoksa "last ack signal") satırında.
+        // iw her saniye çalıştırılmasın diye sonuç 5 sn saklanır.
         val nowMs = System.currentTimeMillis()
-        if (out.any { it.signal == 0 } && nowMs >= iwRetryAt) {
-            val bySection = mutableMapOf<String, String>()
-            for (i in 0 until ifaces.length()) {
-                val nm = ifaces.getJSONObject(i).optString("name")
-                ifToSection[nm]?.let { bySection[nm] = it }
-            }
-            val sig = mutableMapOf<String, Int>()
-            for (ifn in bySection.keys.ifEmpty { (0 until ifaces.length()).map { ifaces.getJSONObject(it).optString("name") }.toSet() }) {
-                if (ifn.isEmpty()) continue
-                val txt = try {
-                    fileExec("/usr/sbin/iw", "dev", ifn, "station", "dump").optString("stdout")
-                } catch (e: Exception) {
-                    ""
-                }
-                var cur: String? = null
-                txt.lineSequence().forEach { line ->
-                    val t = line.trim()
-                    when {
-                        t.startsWith("Station ") -> cur = t.removePrefix("Station ").substringBefore(' ').lowercase()
-                        t.startsWith("signal:") && cur != null -> {
-                            t.removePrefix("signal:").trim().substringBefore(' ').toIntOrNull()?.let { if (it != 0) sig[cur!!] = it }
+        if (out.any { it.signal == 0 }) {
+            if (nowMs - iwSigAt >= 5_000L) {
+                val names = (0 until ifaces.length()).map { ifaces.getJSONObject(it).optString("name") }.filter { it.isNotEmpty() }.toSet()
+                val sig = mutableMapOf<String, Int>()
+                for (ifn in names) {
+                    val txt = try {
+                        fileExec("/usr/sbin/iw", "dev", ifn, "station", "dump").optString("stdout")
+                    } catch (e: Exception) {
+                        ""
+                    }
+                    var cur: String? = null
+                    var avgAck: Int? = null
+                    var lastAck: Int? = null
+                    var plain: Int? = null
+                    fun flush() {
+                        val m = cur ?: return
+                        val v = avgAck ?: lastAck ?: plain
+                        if (v != null) sig[m] = v
+                    }
+                    fun num(t: String, prefix: String): Int? =
+                        t.removePrefix(prefix).trim().substringBefore(' ').substringBefore('[').toIntOrNull()
+                            ?.takeIf { it != 0 && it > -95 }
+                    txt.lineSequence().forEach { line ->
+                        val t = line.trim()
+                        when {
+                            t.startsWith("Station ") -> {
+                                flush()
+                                cur = t.removePrefix("Station ").substringBefore(' ').lowercase()
+                                avgAck = null; lastAck = null; plain = null
+                            }
+                            t.startsWith("avg ack signal:") -> avgAck = num(t, "avg ack signal:")
+                            t.startsWith("last ack signal:") -> lastAck = num(t, "last ack signal:")
+                            t.startsWith("signal:") -> plain = num(t, "signal:")
                         }
                     }
+                    flush()
                 }
+                iwSig = sig
+                iwSigAt = nowMs
             }
-            // Sürücü sinyal vermiyorsa her ölçümde boşuna sorma: 10 dk sonra yeniden dene
-            if (sig.isEmpty()) iwRetryAt = nowMs + 10 * 60_000L
-            if (sig.isNotEmpty()) {
+            if (iwSig.isNotEmpty()) {
                 for (i in out.indices) {
                     val c = out[i]
-                    if (c.signal == 0) sig[c.mac.lowercase()]?.let { out[i] = c.copy(signal = it) }
+                    if (c.signal == 0) iwSig[c.mac.lowercase()]?.let { out[i] = c.copy(signal = it) }
                 }
             }
         }
