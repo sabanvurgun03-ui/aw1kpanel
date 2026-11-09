@@ -228,6 +228,21 @@ class PanelRepository(private val client: UbusClient) {
             )
         } catch (e: UbusException) {
         }
+        // Canlı hız: modemin "Rx/Tx Rate" değeri gecikmeli; WAN bayt sayaçlarının farkından anlık hız hesaplanır.
+        var rxRate = n.value("Rx Rate") ?: "—"
+        var txRate = n.value("Tx Rate") ?: "—"
+        val sent = conn.second
+        val recv = conn.third
+        if (sent != null && recv != null) {
+            val nowMs = System.currentTimeMillis()
+            val last = wanLast
+            wanLast = Triple(nowMs, sent, recv)
+            if (last != null && nowMs - last.first in 800L..20000L && sent >= last.second && recv >= last.third) {
+                val dt = (nowMs - last.first) / 1000.0
+                rxRate = fmtBps((recv - last.third) * 8 / dt)
+                txRate = fmtBps((sent - last.second) * 8 / dt)
+            }
+        }
         return ModemState(
             country = countryFor(mcc),
             connSeconds = conn.first,
@@ -238,14 +253,23 @@ class PanelRepository(private val client: UbusClient) {
             networkMode = (c.value("network_mode") ?: n.value("Network Type") ?: "—")
                 .removeSuffix(" Mode"),
             connected = b.value("connect_status") == "Yes",
-            rxRate = n.value("Rx Rate") ?: "—",
-            txRate = n.value("Tx Rate") ?: "—",
+            rxRate = rxRate,
+            txRate = txRate,
             signal = signal,
             modemName = b.value("name") ?: "—",
             temperature = b.value("temperature") ?: "—",
             signalPercent = signalQuality(signal),
             carriers = carriers,
         )
+    }
+
+    /** Son WAN sayaç örneği (zaman ms, gönderilen, alınan bayt): anlık hız için. */
+    private var wanLast: Triple<Long, Long, Long>? = null
+
+    private fun fmtBps(bps: Double): String = when {
+        bps >= 1_000_000 -> "%.2f Mbps".format(java.util.Locale.US, bps / 1_000_000)
+        bps >= 1_000 -> "%.2f Kbps".format(java.util.Locale.US, bps / 1_000)
+        else -> "%.0f bps".format(java.util.Locale.US, bps)
     }
 
     suspend fun redial() {
@@ -478,10 +502,13 @@ class PanelRepository(private val client: UbusClient) {
             val net = networks.firstOrNull { it.section == section }
             // iwinfo bağlı süresi varsa onu kullan
             val assocTimes = mutableMapOf<String, Long>()
+            val assocSignal = mutableMapOf<String, Int>()
             ifc.optJSONObject("assoc")?.optJSONArray("results")?.let { a ->
                 for (k in 0 until a.length()) {
                     val e = a.getJSONObject(k)
                     if (e.has("connected_time")) assocTimes[e.optString("mac").lowercase()] = e.optLong("connected_time")
+                    val sg = e.optInt("signal", 0).takeIf { it != 0 } ?: e.optInt("signal_avg", 0)
+                    if (sg != 0) assocSignal[e.optString("mac").lowercase()] = sg
                 }
             }
             clients.keys().forEach { mac ->
@@ -495,7 +522,8 @@ class PanelRepository(private val client: UbusClient) {
                     section = section,
                     ssid = net?.ssid ?: name,
                     band = if (freq >= 5000) "5 GHz" else "2.4 GHz",
-                    signal = c.optInt("signal"),
+                    // Bazı sürücüler hostapd'ye sinyali 0 verir: iwinfo değeri kullanılır; o da yoksa 0 = bilinmiyor.
+                    signal = c.optInt("signal").takeIf { it != 0 } ?: assocSignal[key] ?: 0,
                     rxBytes = c.optJSONObject("bytes")?.optLong("rx") ?: 0,
                     txBytes = c.optJSONObject("bytes")?.optLong("tx") ?: 0,
                     rxMbps = ((c.optJSONObject("rate")?.optLong("rx") ?: 0) / 1_000_000).toInt(),

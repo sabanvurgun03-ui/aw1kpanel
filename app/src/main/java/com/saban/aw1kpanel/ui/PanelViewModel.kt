@@ -585,6 +585,11 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
         val usage = attempt { repo.usage() }
         _state.update { it.copy(usage = usage) }
+        refreshVpn()
+    }
+
+    /** VPN durumu ve canlı hızı: ana sayfa ve VPN sekmesi için 2 sn'de bir çağrılır. */
+    suspend fun refreshVpn() {
         val vpn = attempt { repo.vpnState() }
         val kedi = repo.kedi
         if (vpn != null && vpn.connected) {

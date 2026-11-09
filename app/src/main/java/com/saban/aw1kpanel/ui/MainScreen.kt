@@ -216,8 +216,9 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     LaunchedEffect(owner) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             coroutineScope {
-                launch { while (true) { vm.refreshModem(); delay(3000) } }
+                launch { while (true) { vm.refreshModem(); delay(2000) } }
                 launch { while (true) { vm.refreshSystem(); delay(3000) } }
+                launch { delay(1500); while (true) { vm.refreshVpn(); delay(2000) } }
                 launch { while (true) { vm.refreshSlow(); delay(10000) } }
             }
         }

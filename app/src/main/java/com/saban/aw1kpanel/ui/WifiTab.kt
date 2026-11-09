@@ -275,6 +275,7 @@ private fun fmtBytes(b: Long): String = when {
 }
 
 private fun signalLevel(dbm: Int): Int = when {
+    dbm == 0 -> 0
     dbm >= -55 -> 4
     dbm >= -65 -> 3
     dbm >= -75 -> 2
@@ -283,6 +284,7 @@ private fun signalLevel(dbm: Int): Int = when {
 
 @Composable
 private fun signalColor(dbm: Int): Color = when (signalLevel(dbm)) {
+    0 -> MaterialTheme.colorScheme.onSurfaceVariant
     4, 3 -> Good
     2 -> Warn
     else -> Bad
@@ -349,11 +351,13 @@ private fun ClientRow(
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     SignalBars(c.signal)
-                    Text("${c.signal} dBm", fontSize = 10.sp, color = signalColor(c.signal))
+                    Text(if (c.signal == 0) "— dBm" else "${c.signal} dBm", fontSize = 10.sp, color = signalColor(c.signal))
                 }
                 Box {
                     TextButton(onClick = { menu = true }) { Text("⋮", style = MaterialTheme.typography.titleMedium) }
