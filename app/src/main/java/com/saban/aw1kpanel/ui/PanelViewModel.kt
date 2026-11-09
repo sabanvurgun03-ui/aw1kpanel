@@ -274,8 +274,12 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(smsBusy = true) }
             try {
                 repo.smsDelete(indexes)
-                _state.update { it.copy(message = "SMS silindi") }
                 loadSms()
+                // Modem "silindi" dese de mesaj SIM'de duruyorsa gerçeği söyle
+                val still = _state.value.sms.orEmpty().any { m -> m.indexes.any { it in indexes } }
+                _state.update {
+                    it.copy(message = if (still) "Modem silindi dedi ama mesaj SIM'de duruyor (silme çalışmadı)" else "SMS silindi")
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

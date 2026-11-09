@@ -832,10 +832,12 @@ class PanelRepository(private val client: UbusClient) {
 
     suspend fun smsDelete(indexes: List<Int>) {
         if (indexes.isEmpty()) return
-        client.call(
+        val r = client.call(
             "qmodem", "delete_sms",
             JSONObject().put("config_section", smsSection()).put("index", indexes.joinToString(" ")),
         )
+        // qmodem her numara için "status" yazar: "1" başarılı, "0" modem silmeyi reddetti
+        if (r.optString("status") == "0") throw UbusException("Modem silme komutunu reddetti (status 0)")
     }
 
     // ---- SMS spam filtresi (modemdeki aw1k-smsfilter) ----------------------
