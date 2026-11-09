@@ -199,6 +199,16 @@ internal fun VpnTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
         ProfileEditor(initial = ed, onSave = vm::saveEditor, onClose = vm::closeEditor)
     }
 
+    if (state.kediSettingsOpen) {
+        KediSettingsScreen(
+            data = state.kediSettings,
+            error = state.kediSettingsError,
+            saving = state.kediSettingsSaving,
+            nodes = state.kediray?.nodes.orEmpty(),
+            vm = vm,
+        )
+    }
+
     if (importOpen) {
         AlertDialog(
             onDismissRequest = { importOpen = false },
@@ -391,6 +401,36 @@ private fun KediCard(
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(26.dp),
         ) { Text("+ Sunucu ekle") }
+
+        Surface(
+            onClick = { vm.openKediSettings() },
+            shape = RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) { Text("⚙", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("KediRay ayarları", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Genel, DNS, kararlılık, abonelik, gelişmiş",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (k.running) {

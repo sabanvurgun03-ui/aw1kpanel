@@ -1115,6 +1115,86 @@ class PanelRepository(private val client: UbusClient) {
         return res
     }
 
+    // ---- KediRay ayarları (modemdeki Ayarlar sayfasının karşılığı) ------------
+
+    /** `kediray.main` bölümündeki değerler + çekirdek ayarı modu bilgisi. */
+    suspend fun kediSettings(): KediSettingsData {
+        val v = client.call("uci", "get", JSONObject().put("config", "kediray").put("section", "main"))
+            .optJSONObject("values") ?: throw UbusException("KediRay ayarları okunamadı")
+        val map = linkedMapOf<String, Any>()
+        v.keys().forEach { k ->
+            if (k.startsWith(".")) return@forEach
+            when (val x = v.opt(k)) {
+                is JSONArray -> map[k] = (0 until x.length()).map { x.optString(it) }
+                null -> {}
+                else -> map[k] = x.toString()
+            }
+        }
+        val own = try {
+            val r = fileExec("/usr/bin/kediray", "dash", "info")
+            val j = JSONObject(r.optString("stdout").trim())
+            if (j.optBoolean("own")) j.optString("engine").ifEmpty { "çekirdek" } else null
+        } catch (e: Exception) {
+            null
+        }
+        return KediSettingsData(map, own)
+    }
+
+    /**
+     * Değişen ayarları yazar ve uygular (LuCI'deki "Kaydet & Uygula" gibi): boş değerler silinir,
+     * listeler dizi olarak yazılır; uygulama KediRay'i yeniden başlatır.
+     */
+    suspend fun kediSaveSettings(changes: Map<String, Any>) {
+        if (changes.isEmpty()) return
+        val set = JSONObject()
+        val del = JSONArray()
+        changes.forEach { (k, v) ->
+            when (v) {
+                is List<*> -> {
+                    val items = v.map { it.toString().trim() }.filter { it.isNotEmpty() }
+                    if (items.isEmpty()) del.put(k) else set.put(k, JSONArray(items))
+                }
+                else -> {
+                    val s = v.toString().trim()
+                    if (s.isEmpty()) del.put(k) else set.put(k, s)
+                }
+            }
+        }
+        if (del.length() > 0) {
+            client.call(
+                "uci", "delete",
+                JSONObject().put("config", "kediray").put("section", "main").put("options", del),
+            )
+        }
+        if (set.length() > 0) {
+            client.call(
+                "uci", "set",
+                JSONObject().put("config", "kediray").put("section", "main").put("values", set),
+            )
+        }
+        client.call("uci", "apply", JSONObject().put("rollback", false))
+    }
+
+    /** Bant kilidini kaldırır (tüm bantlar açılır). */
+    suspend fun kediBandUnlock(): String {
+        val r = fileExec("/usr/bin/kediray", "band", "unlock")
+        return (r.optString("stdout").ifBlank { r.optString("stderr") }).trim().ifEmpty { "Tamam" }
+    }
+
+    /** Metin2 DNS testini arka planda başlatır. */
+    suspend fun kediDnsTestStart() {
+        fileExec("/usr/bin/kediray", "dnstest", "--bg")
+    }
+
+    /** DNS testi çıktısı: ilk satır durum (BITTI ise bitti), gerisi sonuç. */
+    suspend fun kediDnsTestRead(): Pair<Boolean, String> {
+        val txt = fileExec("/usr/bin/kediray", "dnstest", "--read").optString("stdout").trim()
+        val nl = txt.indexOf('\n')
+        val state = (if (nl < 0) txt else txt.substring(0, nl)).trim()
+        val body = if (nl < 0) "" else txt.substring(nl + 1)
+        return (state == "BITTI") to body
+    }
+
     suspend fun kediSetNodeEnabled(section: String, on: Boolean) {
         kediCli("node-enable", section, if (on) "1" else "0")
     }

@@ -116,6 +116,11 @@ data class UiState(
     /** KediRay düğümlerinin son ping sonucu (düğüm bölümü -> sonuç); [kediPinging] ölçülenler, "all" tümünü ölçerken. */
     val kediPings: Map<String, com.saban.aw1kpanel.data.KediPing> = emptyMap(),
     val kediPinging: Set<String> = emptySet(),
+    /** KediRay ayarlar ekranı: açık mı, okunan değerler, kaydediliyor mu. */
+    val kediSettingsOpen: Boolean = false,
+    val kediSettings: com.saban.aw1kpanel.data.KediSettingsData? = null,
+    val kediSettingsError: String? = null,
+    val kediSettingsSaving: Boolean = false,
     val update: UpdateState = UpdateState(),
     val logs: com.saban.aw1kpanel.data.LogData? = null,
     val logsError: String? = null,
@@ -949,6 +954,70 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    // ---- KediRay ayarları ---------------------------------------------------
+
+    fun openKediSettings() {
+        _state.update { it.copy(kediSettingsOpen = true, kediSettings = null, kediSettingsError = null) }
+        viewModelScope.launch {
+            try {
+                val d = repo.kediSettings()
+                _state.update { it.copy(kediSettings = d) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(kediSettingsError = friendly(e)) }
+            }
+        }
+    }
+
+    fun closeKediSettings() {
+        _state.update { it.copy(kediSettingsOpen = false, kediSettings = null, kediSettingsError = null) }
+    }
+
+    /** Değişen ayarları modeme yazar ve uygular; başarılıysa ekranı kapatır. */
+    fun saveKediSettings(changes: Map<String, Any>) {
+        if (_state.value.kediSettingsSaving) return
+        viewModelScope.launch {
+            _state.update { it.copy(kediSettingsSaving = true) }
+            try {
+                repo.kediSaveSettings(changes)
+                (changes["enabled"] as? String)?.let { settingsStore.vpnManualOff = it == "0" }
+                _state.update {
+                    it.copy(
+                        kediSettingsOpen = false,
+                        kediSettings = null,
+                        message = "Ayarlar kaydedildi; KediRay yeniden başlıyor…",
+                    )
+                }
+                delay(5000)
+                refreshSlow()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(message = friendly(e)) }
+            } finally {
+                _state.update { it.copy(kediSettingsSaving = false) }
+            }
+        }
+    }
+
+    fun kediBandUnlock() {
+        viewModelScope.launch {
+            try {
+                val msg = repo.kediBandUnlock()
+                _state.update { it.copy(message = msg) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(message = friendly(e)) }
+            }
+        }
+    }
+
+    suspend fun kediDnsTestStart() = repo.kediDnsTestStart()
+
+    suspend fun kediDnsTestRead(): Pair<Boolean, String> = repo.kediDnsTestRead()
 
     /** KediRay düğümlerini ölçer: [section] null ise hepsini ("Tümünü test et"). */
     fun pingKedi(section: String?) {
