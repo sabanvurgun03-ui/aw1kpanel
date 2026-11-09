@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.saban.aw1kpanel.R
+import androidx.lifecycle.repeatOnLifecycle
 import com.saban.aw1kpanel.data.AppSettings
 import com.saban.aw1kpanel.data.WifiClient
 import com.saban.aw1kpanel.data.WifiNetwork
@@ -76,6 +77,17 @@ internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) 
     var blockTarget by remember { mutableStateOf<WifiClient?>(null) }
     var revealed by remember { mutableStateOf(setOf<String>()) }
     var expanded by remember { mutableStateOf(setOf<String>()) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // Sayfa görünürken istemci sayaçlarını 3 sn'de bir okuyup anlık hızı hesapla (Cihaz sayfasıyla aynı).
+    androidx.compose.runtime.LaunchedEffect(owner) {
+        owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (true) {
+                vm.refreshWifiClients()
+                kotlinx.coroutines.delay(3000)
+            }
+        }
+    }
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 12.dp),
@@ -99,6 +111,7 @@ internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) 
                     val hide = settings.hideDeviceData && c.mac !in revealed
                     ClientRow(
                         c = c,
+                        live = state.deviceRates[c.mac.uppercase()],
                         dev = state.devices.firstOrNull { it.mac.equals(c.mac, true) },
                         blocked = c.mac in state.blocked,
                         hide = hide,
@@ -268,6 +281,16 @@ private fun fmtSecs(s: Long): String = when {
     else -> "$s sn"
 }
 
+/** Anlık hız (bayt/sn) -> "3.4 Mb/sn" ya da "512 Kb/sn". */
+private fun liveRate(bytesPerSec: Float): String {
+    val bits = bytesPerSec * 8f
+    return when {
+        bits >= 1_000_000f -> "%.1f Mb/sn".format(bits / 1_000_000f)
+        bits >= 1_000f -> "%.0f Kb/sn".format(bits / 1_000f)
+        else -> "0 Kb/sn"
+    }
+}
+
 private fun fmtBytes(b: Long): String = when {
     b >= 1L shl 30 -> "%.1f GB".format(b / 1073741824.0)
     b >= 1L shl 20 -> "%.1f MB".format(b / 1048576.0)
@@ -311,6 +334,7 @@ private fun SignalBars(dbm: Int) {
 @Composable
 private fun ClientRow(
     c: WifiClient,
+    live: Pair<Float, Float>?,
     dev: com.saban.aw1kpanel.data.Device?,
     blocked: Boolean,
     hide: Boolean,
@@ -362,9 +386,11 @@ private fun ClientRow(
                         softWrap = false,
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    SignalBars(c.signal)
-                    Text(if (c.signal == 0) "— dBm" else "${c.signal} dBm", fontSize = 10.sp, color = signalColor(c.signal))
+                if (c.signal != 0) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        SignalBars(c.signal)
+                        Text("${c.signal} dBm", fontSize = 10.sp, color = signalColor(c.signal))
+                    }
                 }
                 Box {
                     TextButton(onClick = { menu = true }) { Text("⋮", style = MaterialTheme.typography.titleMedium) }
@@ -384,16 +410,22 @@ private fun ClientRow(
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (blocked) KPill("Engelli", Bad)
-                KPill("↓ ${c.rxMbps} Mb/sn")
-                KPill("↑ ${c.txMbps} Mb/sn")
+                KPill("↓ " + (live?.let { liveRate(it.first) } ?: "…"))
+                KPill("↑ " + (live?.let { liveRate(it.second) } ?: "…"))
                 if (c.band.isNotBlank()) KPill(c.band, scheme.onSurfaceVariant)
             }
+            Text(
+                "Wi-Fi bağlantı hızı ↓${c.rxMbps} ↑${c.txMbps} Mb/sn",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
             Text(
                 "Bugün ↓${fmtBytes(c.txBytes)} ↑${fmtBytes(c.rxBytes)} · Bağlı ${c.secs?.let { fmtSecs(it) } ?: "—"}" +
                     (dev?.let { " · " + when (it.mode) { "direct" -> "Direkt"; "block" -> "Engelli"; else -> "VPN" } } ?: ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }
