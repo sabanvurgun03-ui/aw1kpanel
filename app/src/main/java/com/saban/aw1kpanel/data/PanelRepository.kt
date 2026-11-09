@@ -532,6 +532,39 @@ class PanelRepository(private val client: UbusClient) {
                 )
             }
         }
+        // Sinyal hâlâ bilinmiyorsa (0) Wi-Fi sürücüsünden oku: `iw dev <arayüz> station dump`
+        if (out.any { it.signal == 0 }) {
+            val bySection = mutableMapOf<String, String>()
+            for (i in 0 until ifaces.length()) {
+                val nm = ifaces.getJSONObject(i).optString("name")
+                ifToSection[nm]?.let { bySection[nm] = it }
+            }
+            val sig = mutableMapOf<String, Int>()
+            for (ifn in bySection.keys.ifEmpty { (0 until ifaces.length()).map { ifaces.getJSONObject(it).optString("name") }.toSet() }) {
+                if (ifn.isEmpty()) continue
+                val txt = try {
+                    fileExec("/usr/sbin/iw", "dev", ifn, "station", "dump").optString("stdout")
+                } catch (e: Exception) {
+                    ""
+                }
+                var cur: String? = null
+                txt.lineSequence().forEach { line ->
+                    val t = line.trim()
+                    when {
+                        t.startsWith("Station ") -> cur = t.removePrefix("Station ").substringBefore(' ').lowercase()
+                        t.startsWith("signal:") && cur != null -> {
+                            t.removePrefix("signal:").trim().substringBefore(' ').toIntOrNull()?.let { if (it != 0) sig[cur!!] = it }
+                        }
+                    }
+                }
+            }
+            if (sig.isNotEmpty()) {
+                for (i in out.indices) {
+                    val c = out[i]
+                    if (c.signal == 0) sig[c.mac.lowercase()]?.let { out[i] = c.copy(signal = it) }
+                }
+            }
+        }
         return out.sortedBy { it.ssid }
     }
 

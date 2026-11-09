@@ -346,13 +346,20 @@ private fun ClientRow(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // IP ve MAC ayrı satırda: MAC hiç kesilmeden tam okunur
                     Text(
-                        (dev?.ip?.let { if (hide) maskIp(it) else it } ?: "—") + " · " + (if (hide) maskMac(c.mac) else c.mac),
+                        dev?.ip?.let { if (hide) maskIp(it) else it } ?: "—",
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant,
                         maxLines = 1,
+                    )
+                    Text(
+                        if (hide) maskMac(c.mac) else c.mac,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
                         softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
