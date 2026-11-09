@@ -50,6 +50,8 @@ val BUILTIN_THEMES: List<ThemeDef> = listOf(
     ThemeDef("orchid", "Orchid", c(0x150F24), c(0xC79BFF), c(0x4B2A7A), c(0x7A3FB5), c(0x6FE0B0), c(0xFFC46B), c(0xFF7AA8)),
     ThemeDef("paper", "Paper", c(0xF6F1E7), c(0x0E7490), c(0x0E6B80), c(0x14899F), c(0x1F8A4C), c(0xB7791F), c(0xC0392B)),
     ThemeDef("matcha", "Matcha", c(0xF2F5EC), c(0x2F7D4F), c(0x2F6B45), c(0x4C8F63), c(0x2F7D4F), c(0xA8741A), c(0xC0392B)),
+    ThemeDef("orange-black", "Turuncu & Siyah", c(0x0B0B0D), c(0xFF8A1F), c(0xB4450A), c(0xFF7A1A), c(0x5BE584), c(0xFFC46B), c(0xFF6B6B)),
+    ThemeDef("white-blue", "Beyaz & Mavi", c(0xF7F9FC), c(0x1D4ED8), c(0x1E40AF), c(0x3B82F6), c(0x1F8A4C), c(0xB7791F), c(0xC0392B)),
 )
 
 fun hexOf(argb: Int): String = "#%06X".format(argb and 0xFFFFFF)
