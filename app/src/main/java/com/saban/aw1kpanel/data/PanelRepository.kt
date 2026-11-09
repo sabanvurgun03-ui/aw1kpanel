@@ -1272,6 +1272,12 @@ class PanelRepository(private val client: UbusClient) {
                 .optJSONObject("values")
             val sel = values?.optJSONObject("main")?.optString("node").orEmpty()
             if (sel.isNotEmpty() && sel != "auto") activeSec = sel
+            // Liste sırası: kediray.main.node_order ("ad|adres:port" anahtarları); yoksa dosyadaki sıra
+            val ord = mutableListOf<String>()
+            when (val raw = values?.optJSONObject("main")?.opt("node_order")) {
+                is org.json.JSONArray -> for (i in 0 until raw.length()) ord += raw.optString(i)
+                is String -> if (raw.isNotEmpty()) ord += raw
+            }
             values?.keys()?.forEach { name ->
                 val n = values.optJSONObject(name) ?: return@forEach
                 if (n.optString(".type") != "node") return@forEach
@@ -1284,7 +1290,17 @@ class PanelRepository(private val client: UbusClient) {
                     network = n.optString("network"),
                     tls = n.optString("tls"),
                     enabled = n.optString("enabled") != "0",
+                    rawName = n.optString("remarks"),
                 )
+            }
+            if (ord.isNotEmpty()) {
+                val pos = HashMap<String, Int>()
+                ord.forEachIndexed { i, k -> if (k !in pos) pos[k] = i }
+                val idx = nodes.withIndex().associate { it.value.section to it.index }
+                nodes.sortWith(compareBy<KediNode>(
+                    { pos["${it.rawName}|${it.address}:${it.port}"] ?: 1_000_000 },
+                    { idx[it.section] ?: 0 },
+                ))
             }
         } catch (e: UbusException) {
             // düğümler okunamadı; durum yine de gösterilir
@@ -1364,6 +1380,11 @@ class PanelRepository(private val client: UbusClient) {
     suspend fun kediUpdateNode(section: String, o: JSONObject) = kediSaveNode(section, o)
 
     suspend fun kediAddNode(o: JSONObject) = kediSaveNode("new", o)
+
+    /** Sunucuyu listede komşusuyla yer değiştirir (`kediray node-move <bölüm> up|down`). */
+    suspend fun kediMoveNode(section: String, up: Boolean) {
+        kediCli("node-move", section, if (up) "up" else "down")
+    }
 
     suspend fun kediDeleteNode(section: String) {
         kediCli("node", "del", section)

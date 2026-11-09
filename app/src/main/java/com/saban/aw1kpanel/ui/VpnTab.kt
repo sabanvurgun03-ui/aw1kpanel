@@ -381,7 +381,7 @@ private fun KediCard(
                 Text(if (allBusy) "Ölçülüyor…" else "⚡ Tümünü test et")
             }
         }
-        k.nodes.forEach { n ->
+        k.nodes.forEachIndexed { i, n ->
             NodeCard(
                 n = n,
                 active = n.section == k.activeSection,
@@ -393,6 +393,9 @@ private fun KediCard(
                 onEdit = { vm.openKediNode(n.section) },
                 onToggle = { vm.setKediNodeEnabled(n.section, !n.enabled) },
                 onDelete = { deleteNode = n },
+                canUp = i > 0,
+                canDown = i < k.nodes.lastIndex,
+                onMove = { up -> vm.moveKediNode(n.section, up) },
             )
         }
 
@@ -589,6 +592,9 @@ private fun NodeCard(
     onEdit: () -> Unit,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
+    canUp: Boolean,
+    canDown: Boolean,
+    onMove: (up: Boolean) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val border by animateColorAsState(
@@ -656,6 +662,16 @@ private fun NodeCard(
                     DropdownMenuItem(
                         text = { Text(if (n.enabled) "Kapat" else "Aç") },
                         onClick = { menu = false; onToggle() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("▲ Yukarı taşı") },
+                        enabled = canUp,
+                        onClick = { menu = false; onMove(true) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("▼ Aşağı taşı") },
+                        enabled = canDown,
+                        onClick = { menu = false; onMove(false) },
                     )
                     DropdownMenuItem(text = { Text("Sil", color = Bad) }, onClick = { menu = false; onDelete() })
                 }

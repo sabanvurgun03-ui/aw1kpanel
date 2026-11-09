@@ -165,6 +165,8 @@ data class KediNode(
     val network: String,
     val tls: String,
     val enabled: Boolean,
+    /** uci'deki ham `remarks` (sıralama anahtarı için). */
+    val rawName: String = "",
 )
 
 data class KediState(
