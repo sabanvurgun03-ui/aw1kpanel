@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modem yerel ağda düz HTTP ile konuşuyor (LuCI/ubus). Sadece kendi modeminin
+     adresini girdiğin sürece trafik evdeki ağdan çıkmaz. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

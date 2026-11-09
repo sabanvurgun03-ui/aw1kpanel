@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Kedi kafası: iki kulak, yuvarlak çene -->
+    <path
+        android:fillColor="#FFF3E8FF"
+        android:pathData="M30,32 L43,43 Q54,40 65,43 L78,32 L78,62 Q78,80 54,80 Q30,80 30,62 Z" />
+    <!-- İç kulaklar -->
+    <path
+        android:fillColor="#FFC4B5FD"
+        android:pathData="M34,38 L41,44 L34,50 Z M74,38 L67,44 L74,50 Z" />
+    <!-- Alından geçen ışın (şimşek) -->
+    <path
+        android:fillColor="#FFFBBF24"
+        android:pathData="M57,40 L47,56 L53,56 L50,67 L61,50 L55,50 Z" />
+    <!-- Gözler -->
+    <path
+        android:fillColor="#FF4C1D95"
+        android:pathData="M37,62 Q41,57 45,62 Q41,66 37,62 Z M63,62 Q67,57 71,62 Q67,66 63,62 Z" />
+    <!-- Burun -->
+    <path
+        android:fillColor="#FFA78BFA"
+        android:pathData="M51,69 L57,69 L54,73 Z" />
+</vector>
