@@ -17,6 +17,19 @@ android {
         versionName = "0.36"
     }
 
+    // GitHub derlemesi senin Android Studio debug anahtarınla imzalar (AW1K_KEYSTORE = secret'tan çıkarılan dosya).
+    // Böylece Android Studio'dan kurduğun ve GitHub'dan gelen sürümler birbirinin üzerine kurulabilir.
+    signingConfigs {
+        getByName("debug") {
+            System.getenv("AW1K_KEYSTORE")?.takeIf { it.isNotBlank() }?.let { p ->
+                storeFile = file(p)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

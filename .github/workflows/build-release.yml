@@ -36,11 +36,26 @@ jobs:
             echo "::error::DEBUG_KEYSTORE_BASE64 secret'ı yok. Repo > Settings > Secrets and variables > Actions'a ekle."
             exit 1
           fi
-          mkdir -p ~/.android
-          echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          KS="$RUNNER_TEMP/aw1k-debug.keystore"
+          echo "$KEYSTORE_B64" | base64 -d > "$KS"
+          echo "AW1K_KEYSTORE=$KS" >> "$GITHUB_ENV"
+          FP=$(keytool -list -v -keystore "$KS" -storepass android -alias androiddebugkey | awk '/SHA256:/ { print $2; exit }' | tr -d ':')
+          [ -n "$FP" ] || { echo "::error::Anahtar okunamadı (şifre android, alias androiddebugkey olmalı)"; exit 1; }
+          echo "Anahtar SHA-256: $FP"
+          echo "KEY_FP=$FP" >> "$GITHUB_ENV"
 
       - name: Derle
         run: gradle --no-daemon :app:assembleDebug
+
+      - name: İmzayı doğrula
+        run: |
+          SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          APK_FP=$("$SIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | awk -F': ' '/SHA-256 digest/ { print toupper($2); exit }')
+          echo "APK SHA-256: $APK_FP"
+          if [ "$APK_FP" != "$KEY_FP" ]; then
+            echo "::error::APK senin anahtarınla imzalanmamış; yayınlanmıyor."
+            exit 1
+          fi
 
       - name: Yayınla
         env:
