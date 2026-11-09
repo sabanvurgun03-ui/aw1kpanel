@@ -48,7 +48,7 @@ class VpnWatchService : Service() {
             ServiceCompat.startForeground(
                 this,
                 ONGOING_ID,
-                ongoing("VPN izleniyor"),
+                ongoing("Arka planda çalışıyor"),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
         } catch (e: Exception) {
@@ -118,7 +118,6 @@ class VpnWatchService : Service() {
                     }
                     update(if (vpn.connected) "VPN bağlı · ${vpn.profileName}" else "VPN bağlı değil")
                 }
-                if (!conf.vpnAlert) update("Yeni SMS izleniyor")
                 if (conf.smsAlert && System.currentTimeMillis() - lastSms >= 45_000L) {
                     lastSms = System.currentTimeMillis()
                     checkSms(repo, settings)
@@ -173,8 +172,13 @@ class VpnWatchService : Service() {
 
     private fun createChannels() {
         val nm = getSystemService(NotificationManager::class.java)
+        // Eski "VPN izleme" kanalı (LOW) yerine en sessiz kanal: durum çubuğunda ikon yok, panelde küçük
+        nm.deleteNotificationChannel("vpn_watch")
         nm.createNotificationChannel(
-            NotificationChannel(CH_WATCH, "VPN izleme", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CH_WATCH, "Arka plan izleme", NotificationManager.IMPORTANCE_MIN),
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_INFO, "VPN bilgi", NotificationManager.IMPORTANCE_LOW),
         )
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERT, "VPN uyarıları", NotificationManager.IMPORTANCE_HIGH),
@@ -218,7 +222,7 @@ class VpnWatchService : Service() {
     private fun notifyRecovered() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.cancel(ALERT_ID)
-        val n = Notification.Builder(this, CH_WATCH)
+        val n = Notification.Builder(this, CH_INFO)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("VPN yeniden bağlandı")
             .setAutoCancel(true)
@@ -228,7 +232,8 @@ class VpnWatchService : Service() {
     }
 
     private companion object {
-        const val CH_WATCH = "vpn_watch"
+        const val CH_WATCH = "watch_min"
+        const val CH_INFO = "vpn_info"
         const val CH_ALERT = "vpn_alert"
         const val CH_SMS = "sms"
         const val ONGOING_ID = 1
