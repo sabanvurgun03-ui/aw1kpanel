@@ -126,6 +126,9 @@ data class UiState(
     val update: UpdateState = UpdateState(),
     val logs: com.saban.aw1kpanel.data.LogData? = null,
     val logsError: String? = null,
+    val sms: List<com.saban.aw1kpanel.data.SmsMessage>? = null,
+    val smsError: String? = null,
+    val smsBusy: Boolean = false,
     val message: String? = null,
 )
 
@@ -164,6 +167,54 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             _state.update { it.copy(checkingSaved = false) }
+        }
+    }
+
+    /** SMS sayfası: SIM'deki mesajları çeker. */
+    suspend fun loadSms() {
+        try {
+            val l = repo.smsInbox()
+            _state.update { it.copy(sms = l, smsError = null) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.update { it.copy(smsError = friendly(e)) }
+        }
+    }
+
+    fun refreshSms() {
+        viewModelScope.launch { loadSms() }
+    }
+
+    fun sendSms(number: String, text: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            _state.update { it.copy(smsBusy = true) }
+            try {
+                repo.smsSend(number, text)
+                _state.update { it.copy(message = "SMS gönderildi", smsBusy = false) }
+                onDone()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(message = "SMS gönderilemedi: " + friendly(e), smsBusy = false) }
+            }
+        }
+    }
+
+    fun deleteSms(indexes: List<Int>) {
+        viewModelScope.launch {
+            _state.update { it.copy(smsBusy = true) }
+            try {
+                repo.smsDelete(indexes)
+                _state.update { it.copy(message = "SMS silindi") }
+                loadSms()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(message = "Silinemedi: " + friendly(e)) }
+            } finally {
+                _state.update { it.copy(smsBusy = false) }
+            }
         }
     }
 

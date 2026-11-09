@@ -781,6 +781,63 @@ class PanelRepository(private val client: UbusClient) {
         return KediStats(shares, days)
     }
 
+    // ---- SMS (qmodem ubus eklentisi) ---------------------------------------
+
+    private var smsSection: String? = null
+
+    /** qmodem'deki modem bölümünün adı (ör. "4_1"); bulunamazsa SMS desteklenmiyor demektir. */
+    private suspend fun smsSection(): String {
+        smsSection?.let { return it }
+        val values = try {
+            client.call("uci", "get", JSONObject().put("config", "qmodem")).optJSONObject("values")
+        } catch (e: UbusException) {
+            null
+        } ?: throw UbusException("Bu modemde SMS arayüzü (qmodem) bulunamadı")
+        var found: String? = null
+        values.keys().forEach { k ->
+            if (found == null && values.optJSONObject(k)?.optString(".type") == "modem-device") found = k
+        }
+        return (found ?: throw UbusException("qmodem'de modem bulunamadı")).also { smsSection = it }
+    }
+
+    /** SIM'deki SMS'ler; yeni olan üstte. Aynı gönderen ve saatteki parçalar tek mesajda birleştirilir. */
+    suspend fun smsInbox(): List<SmsMessage> {
+        val o = client.call("qmodem", "get_sms", JSONObject().put("config_section", smsSection()))
+        val arr = o.optJSONArray("msg") ?: return emptyList()
+        val rows = (0 until arr.length()).map { arr.getJSONObject(it) }.sortedBy { it.optInt("index") }
+        val groups = LinkedHashMap<String, MutableList<JSONObject>>()
+        for (r in rows) groups.getOrPut(r.optString("sender") + "|" + r.optLong("timestamp")) { mutableListOf() }.add(r)
+        return groups.values.map { g ->
+            SmsMessage(
+                indexes = g.map { it.optInt("index") },
+                sender = g.first().optString("sender"),
+                timestamp = g.first().optLong("timestamp"),
+                text = g.joinToString("") { it.optString("content") },
+            )
+        }.sortedByDescending { it.timestamp }
+    }
+
+    /** SMS gönderir. qmodem `params` alanını metin olarak bekliyor (JSON metni); kabul edilmezse nesne olarak dener. */
+    suspend fun smsSend(number: String, text: String) {
+        val inner = JSONObject().put("phone_number", number).put("message_content", text)
+        val base = JSONObject().put("config_section", smsSection())
+        try {
+            client.call("qmodem", "send_sms", JSONObject(base.toString()).put("params", inner.toString()))
+        } catch (e: UbusException) {
+            // Geçersiz bağımsız değişken (kod 2): metin biçimi reddedildi, mesaj gitmedi; nesne olarak dene.
+            if (e.code != 2) throw e
+            client.call("qmodem", "send_sms", JSONObject(base.toString()).put("params", inner))
+        }
+    }
+
+    suspend fun smsDelete(indexes: List<Int>) {
+        if (indexes.isEmpty()) return
+        client.call(
+            "qmodem", "delete_sms",
+            JSONObject().put("config_section", smsSection()).put("index", indexes.joinToString(" ")),
+        )
+    }
+
     /** KediRay cihaz yönünü değiştirir (vpn | direct | block). */
     suspend fun setDeviceMode(mac: String, mode: String, name: String) {
         val r = client.call(

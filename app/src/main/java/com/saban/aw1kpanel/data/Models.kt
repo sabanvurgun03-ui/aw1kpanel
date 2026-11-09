@@ -276,3 +276,6 @@ data class SysDetails(
     val model: String?,
     val cpu: String?,
 )
+
+/** Gelen kutusundaki bir SMS. Uzun mesajlar parçalı gelir; aynı gönderen ve saatteki parçalar birleştirilir ([indexes] hepsini tutar). */
+data class SmsMessage(val indexes: List<Int>, val sender: String, val timestamp: Long, val text: String)
