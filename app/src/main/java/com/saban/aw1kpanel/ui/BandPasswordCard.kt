@@ -28,17 +28,21 @@ import com.saban.aw1kpanel.data.AppSettings
 internal fun BandPasswordCard(settings: AppSettings, vm: PanelViewModel) {
     var dialog by remember { mutableStateOf<String?>(null) } // "set" | "remove"
     SectionCard {
-        CardTitle(R.drawable.ic_nav_band, "Band kilidi şifresi")
-        Text(
-            if (settings.bandLockProtected) "Band kilidi sayfası şifreli." else "Şifre yok; sayfa herkese açık.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        KHeader(
+            title = "Band kilidi şifresi",
+            subtitle = if (settings.bandLockProtected) "Band kilidi sayfası şifreyle açılır" else "Şifre yok; sayfa herkese açık",
+            icon = R.drawable.ic_nav_band,
+            trailing = {
+                if (settings.bandLockProtected) KPill("Şifreli", Good, dot = true) else KPill("Açık", Warn, dot = true)
+            },
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dialog = "set" }) { Text(if (settings.bandLockProtected) "Değiştir" else "Şifre oluştur") }
+            androidx.compose.material3.FilledTonalButton(onClick = { dialog = "set" }, modifier = Modifier.weight(1f)) {
+                Text(if (settings.bandLockProtected) "Değiştir" else "🔒 Şifre oluştur")
+            }
             if (settings.bandLockProtected) {
-                OutlinedButton(onClick = { dialog = "remove" }) { Text("Kaldır", color = Bad) }
+                OutlinedButton(onClick = { dialog = "remove" }, modifier = Modifier.weight(1f)) { Text("Kaldır", color = Bad) }
             }
         }
     }

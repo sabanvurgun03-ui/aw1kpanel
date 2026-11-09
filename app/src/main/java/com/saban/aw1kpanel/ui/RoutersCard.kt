@@ -33,42 +33,43 @@ internal fun RoutersCard(state: UiState, vm: PanelViewModel) {
     var deleting by remember { mutableStateOf<Router?>(null) }
 
     SectionCard {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Modemler", style = MaterialTheme.typography.titleMedium)
-            Button(onClick = { adding = true }) { Text("Modem ekle") }
-        }
-        Spacer(Modifier.height(8.dp))
-        state.routers.forEach { r ->
+        KHeader(
+            title = "Kayıtlı modemler",
+            subtitle = "${state.routers.size} modem",
+            emoji = "📡",
+            trailing = {
+                androidx.compose.material3.FilledTonalButton(onClick = { adding = true }) { Text("+ Ekle") }
+            },
+        )
+        Spacer(Modifier.height(10.dp))
+        state.routers.forEachIndexed { i, r ->
             val active = r.id == state.activeRouterId
-            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(r.name, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${r.host} · ${r.user}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+            var menu by remember { mutableStateOf(false) }
+            if (i > 0) KDivider()
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(r.name.ifBlank { r.host }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        if (active) KPill("Aktif", Good, dot = true)
                     }
-                    if (active) Text("Aktif", color = Good, fontWeight = FontWeight.Medium)
+                    Text(
+                        "${r.host} · ${r.user}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (!active) {
-                        OutlinedButton(onClick = { vm.connectRouter(r.id) }) { Text("Bağlan") }
+                if (!active) {
+                    OutlinedButton(onClick = { vm.connectRouter(r.id) }) { Text("Bağlan") }
+                }
+                androidx.compose.foundation.layout.Box {
+                    TextButton(onClick = { menu = true }) { Text("⋮", style = MaterialTheme.typography.titleMedium) }
+                    androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Düzenle") }, onClick = { menu = false; editing = r })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Sil", color = Bad) }, onClick = { menu = false; deleting = r })
                     }
-                    OutlinedButton(onClick = { editing = r }) { Text("Düzenle") }
-                    OutlinedButton(
-                        onClick = { deleting = r },
-                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Bad),
-                    ) { Text("Sil") }
                 }
             }
         }

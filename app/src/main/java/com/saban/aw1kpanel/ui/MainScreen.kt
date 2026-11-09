@@ -627,107 +627,134 @@ private fun NetworkTab(
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Bağlantı özeti (degrade kart)
         item {
-            SectionCard {
-                CardTitle(R.drawable.ic_nav_network, "Bağlantı durumu")
-                Spacer(Modifier.height(8.dp))
-                InfoRow("Bağlantı durumu", if (modem.connected) "Bağlandı" else "Bağlı değil", if (modem.connected) Good else Bad)
-                InfoRow("Operatör", modem.operatorName)
-                InfoRow("Ülke", modem.country)
-                InfoRow("Teknoloji", technology(modem))
-                InfoRow("Bağlantı süresi", modem.connSeconds?.let { formatUptimeLong(it) } ?: "—")
-                InfoRow("▲ Gönderildi", modem.sentBytes?.let { fmtNetBytes(it) } ?: "—")
-                InfoRow("▼ Alındı", modem.recvBytes?.let { fmtNetBytes(it) } ?: "—")
-            }
-        }
-        items(modem.cells) { cell ->
-            SectionCard {
-                CardTitle(R.drawable.ic_nav_network, "${cell.role} · ${cell.band}")
-                Spacer(Modifier.height(8.dp))
-                InfoRow("Bant genişliği", cell.bandwidth)
-                InfoRow("Fiziksel hücre kimliği", cell.pci)
-                InfoRow("EARFCN", cell.earfcn)
-                InfoRow("RSSI", cell.rssi + if (cell.rssi != "—") " dBm" else "")
-                InfoRow("RSRP", cell.rsrp + if (cell.rsrp != "—") " dBm" else "")
-                InfoRow("RSRQ", cell.rsrq + if (cell.rsrq != "—") " dB" else "")
-                InfoRow("SINR", cell.sinr + if (cell.sinr != "—") " dB" else "")
-            }
-        }
-        item {
-            SectionCard {
-                CardTitle(R.drawable.ic_nav_network, "Sinyal")
-                Spacer(Modifier.height(8.dp))
-                if (modem.signal.isEmpty()) {
-                    Text("Veri yok", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                modem.signal.forEach { s ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(s.label, style = MaterialTheme.typography.bodyMedium)
-                        Text("${s.value} ${s.unit}".trim(), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    s.fraction?.let {
-                        LinearProgressIndicator(
-                            progress = { it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 2.dp, bottom = 8.dp),
+            SectionCard(brush = HeaderBrush) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            modem.operatorName + if (modem.country.isNotBlank() && modem.country != "—") " · ${modem.country}" else "",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(alpha = 0.8f),
+                        )
+                        Text(
+                            if (modem.connected) "Bağlandı" else "Bağlı değil",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (modem.connected) Color(0xFF86EFAC) else Color(0xFFFCA5A5),
                         )
                     }
+                    Text(
+                        technology(modem),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KGlassTile("Süre", modem.connSeconds?.let { formatUptimeLong(it) } ?: "—", Modifier.weight(1f))
+                    KGlassTile("↑ Gönderildi", modem.sentBytes?.let { fmtNetBytes(it) } ?: "—", Modifier.weight(1f))
+                    KGlassTile("↓ Alındı", modem.recvBytes?.let { fmtNetBytes(it) } ?: "—", Modifier.weight(1f))
                 }
             }
         }
-        item {
-            SectionCard {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CardTitle(R.drawable.ic_nav_vpn, "VPN")
-                    if (vpn != null) {
-                        Switch(
-                            checked = vpn.connected,
-                            enabled = vpn.connected || vpnProfileKnown,
-                            onCheckedChange = { on -> if (on) onVpnToggle(true) else confirmVpnOff = true },
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                if (vpn == null) {
-                    Text("Durum okunamadı", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text(
-                        if (vpn.connected) "Bağlı · ${vpn.profileName}" else "Bağlı değil",
-                        color = if (vpn.connected) Good else Bad,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        "Süre ${formatUptime(vpn.uptimeSeconds)} · ↑ ${formatRate(vpn.uplinkRate)} · ↓ ${formatRate(vpn.downlinkRate)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    vpn.fault?.let {
-                        Spacer(Modifier.height(6.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, color = Bad)
+
+        // Taşıyıcılar (PCC / SCC)
+        if (modem.cells.isNotEmpty()) item { KGroupLabel("Taşıyıcılar") }
+        items(modem.cells) { cell -> CellCard(cell) }
+
+        // Sinyal özeti
+        if (modem.signal.isNotEmpty()) {
+            item {
+                SectionCard {
+                    KHeader("Sinyal", "Modemin ölçtüğü değerler", icon = R.drawable.ic_nav_network)
+                    Spacer(Modifier.height(12.dp))
+                    modem.signal.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pair.forEach { s ->
+                                KTile(
+                                    s.label,
+                                    "${s.value} ${s.unit}".trim(),
+                                    Modifier.weight(1f),
+                                    bar = s.fraction,
+                                    barColor = kQualityColor(s.fraction),
+                                )
+                            }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
         }
+
+        // VPN
         item {
             SectionCard {
-                CardTitle(R.drawable.ic_modem, "Modem")
-                Spacer(Modifier.height(8.dp))
-                Text("Model: ${modem.modemName}")
-                Text("Sıcaklık: ${modem.temperature}")
+                KHeader(
+                    title = "VPN" + (vpn?.provider?.let { " · $it" } ?: ""),
+                    subtitle = when {
+                        vpn == null -> "Durum okunamadı"
+                        vpn.connected -> "Bağlı · ${vpn.profileName}"
+                        else -> "Bağlı değil"
+                    },
+                    subtitleColor = when {
+                        vpn == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                        vpn.connected -> Good
+                        else -> Bad
+                    },
+                    icon = R.drawable.ic_nav_vpn,
+                    trailing = if (vpn != null) {
+                        {
+                            Switch(
+                                checked = vpn.connected,
+                                enabled = vpn.connected || vpnProfileKnown,
+                                onCheckedChange = { on -> if (on) onVpnToggle(true) else confirmVpnOff = true },
+                            )
+                        }
+                    } else null,
+                )
+                if (vpn != null && vpn.connected) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KTile("Süre", formatUptime(vpn.uptimeSeconds), Modifier.weight(1f))
+                        KTile("↓ İndirme", formatRate(vpn.downlinkRate), Modifier.weight(1f))
+                        KTile("↑ Yükleme", formatRate(vpn.uplinkRate), Modifier.weight(1f))
+                    }
+                }
+                vpn?.fault?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = Bad)
+                }
+            }
+        }
+
+        // Modem
+        item {
+            SectionCard {
+                KHeader("Modem", modem.modemName, icon = R.drawable.ic_modem)
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { confirmRedial = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Yeniden bağlan")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KTile("Sıcaklık", modem.temperature, Modifier.weight(1f))
+                    KTile("Teknoloji", technology(modem), Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { confirmReboot = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Modemi yeniden başlat", color = Bad)
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = { confirmRedial = true },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("↻ Yeniden bağlan") }
+                    OutlinedButton(
+                        onClick = { confirmReboot = true },
+                        modifier = Modifier.weight(1f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Bad.copy(alpha = 0.6f)),
+                    ) { Text("⏻ Yeniden başlat", color = Bad) }
                 }
             }
         }
@@ -774,6 +801,62 @@ private fun NetworkTab(
     }
 }
 
+/** Bir taşıyıcı: üstte rol + bant, ortada renkli sinyal kutuları, altta hücre kimlikleri. */
+@Composable
+private fun CellCard(cell: com.saban.aw1kpanel.data.CellRow) {
+    fun num(s: String) = s.replace(',', '.').trim().toFloatOrNull()
+    val rsrp = num(cell.rsrp)
+    val rsrq = num(cell.rsrq)
+    val sinr = num(cell.sinr)
+    val rssi = num(cell.rssi)
+    val qRsrp = kQuality(rsrp, -120f, -75f)
+    val qRsrq = kQuality(rsrq, -20f, -5f)
+    val qSinr = kQuality(sinr, -3f, 22f)
+    val qRssi = kQuality(rssi, -100f, -55f)
+    val overall = listOfNotNull(qRsrp, qSinr, qRsrq).let { if (it.isEmpty()) null else it.average().toFloat() }
+    SectionCard {
+        KHeader(
+            title = cell.band,
+            subtitle = if (cell.role.startsWith("PCC")) "Ana taşıyıcı (PCC)" else "Ek taşıyıcı (${cell.role})",
+            emoji = "📶",
+            trailing = {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (cell.bandwidth.isNotBlank() && cell.bandwidth != "—") KPill(cell.bandwidth)
+                    overall?.let {
+                        KPill(
+                            when {
+                                it >= 0.6f -> "İyi"
+                                it >= 0.3f -> "Orta"
+                                else -> "Zayıf"
+                            },
+                            kQualityColor(it),
+                            dot = true,
+                        )
+                    }
+                }
+            },
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("RSRP", unit(cell.rsrp, "dBm"), Modifier.weight(1f), kQualityColor(qRsrp), bar = qRsrp, barColor = kQualityColor(qRsrp))
+            KTile("SINR", unit(cell.sinr, "dB"), Modifier.weight(1f), kQualityColor(qSinr), bar = qSinr, barColor = kQualityColor(qSinr))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("RSRQ", unit(cell.rsrq, "dB"), Modifier.weight(1f), kQualityColor(qRsrq), bar = qRsrq, barColor = kQualityColor(qRsrq))
+            KTile("RSSI", unit(cell.rssi, "dBm"), Modifier.weight(1f), kQualityColor(qRssi), bar = qRssi, barColor = kQualityColor(qRssi))
+        }
+        Text(
+            "PCI ${cell.pci}  ·  EARFCN ${cell.earfcn}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 10.dp, start = 2.dp),
+        )
+    }
+}
+
+private fun unit(v: String, u: String) = if (v.isBlank() || v == "—") "—" else "$v $u"
+
 private fun formatRate(bytesPerSec: Long): String = when {
     bytesPerSec >= 1_048_576 -> "%.1f MB/s".format(bytesPerSec / 1_048_576.0)
     bytesPerSec >= 1024 -> "%.1f KB/s".format(bytesPerSec / 1024.0)
@@ -801,125 +884,63 @@ private fun SettingsTab(state: UiState, settings: AppSettings, vm: PanelViewMode
         }
     }
 
+    var showThemes by rememberSaveable { mutableStateOf(false) }
+    val curName = (com.saban.aw1kpanel.data.BUILTIN_THEMES + settings.customThemes)
+        .firstOrNull { it.id == settings.themeId }?.name
+        ?: when (settings.themeMode) { 1 -> "Açık"; 2 -> "Koyu"; else -> "Sistem" }
+
     LazyColumn(
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        item { KGroupLabel("Modemler") }
         item { RoutersCard(state, vm) }
+        item { KGroupLabel("Güvenlik") }
         item { BandPasswordCard(settings, vm) }
+        item { KGroupLabel("Görünüm ve VPN") }
         item {
             SectionCard {
-                Text("VPN sayfası", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Kullanmadığın bölümü gizleyebilirsin.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("KediRay bölümünü göster")
-                    Switch(checked = settings.showKedi, onCheckedChange = vm::setShowKedi)
-                }
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("xDivine-Ray bölümünü göster")
-                    Switch(checked = settings.showXray, onCheckedChange = vm::setShowXray)
-                }
-            }
-        }
-        item {
-            var showThemes by rememberSaveable { mutableStateOf(false) }
-            val curName = (com.saban.aw1kpanel.data.BUILTIN_THEMES + settings.customThemes)
-                .firstOrNull { it.id == settings.themeId }?.name
-                ?: when (settings.themeMode) { 1 -> "Açık"; 2 -> "Koyu"; else -> "Sistem" }
-            SectionCard {
-                Row(
-                    Modifier.fillMaxWidth().clickable { showThemes = true },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Görünüm", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Tema: $curName. Açık/koyu mod, hazır temalar ya da kendi renklerin.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-                }
+                KNavRow("Görünüm", "Tema: $curName · açık/koyu, hazır temalar ya da kendi renklerin", { showThemes = true }, emoji = "🎨")
+                KDivider()
+                KSwitchRow("KediRay bölümü", "VPN sayfasında KediRay kartlarını göster", settings.showKedi, vm::setShowKedi)
+                KDivider()
+                KSwitchRow("xDivine-Ray bölümü", "VPN sayfasında xDivine-Ray profillerini göster", settings.showXray, vm::setShowXray)
             }
             if (showThemes) ThemesDialog(settings, vm) { showThemes = false }
         }
+        item { KGroupLabel("Bildirim ve gizlilik") }
         item {
             SectionCard {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("VPN kopma uyarısı", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "VPN bağlıyken kopunca bildirim gönderir. Telefon modemin Wi-Fi ağındayken çalışır ve arka planda küçük bir bildirim gösterir.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Switch(
-                        checked = settings.vpnAlert,
-                        onCheckedChange = { on ->
-                            val needsPermission = on &&
-                                Build.VERSION.SDK_INT >= 33 &&
-                                ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                ) != PackageManager.PERMISSION_GRANTED
-                            when {
-                                needsPermission -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                else -> vm.setVpnAlert(on)
-                            }
-                        },
-                    )
-                }
-            }
-        }
-        item {
-            SectionCard {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Geliştirmeye yardımcı ol", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Açıksa günde en çok bir kez rastgele bir kurulum kimliği, uygulama sürümü ve uygulama adı gönderilir. Modem adresin, şifren, VPN sunucuların, cihazların ve trafiğin gönderilmez. Kapatınca kimlik silinir.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Switch(
-                        checked = settings.statsConsent == 1,
-                        onCheckedChange = { vm.setStatsConsent(it) },
-                    )
-                }
+                KSwitchRow(
+                    "VPN kopma uyarısı",
+                    "VPN bağlıyken kopunca bildirim gönderir. Telefon modemin Wi-Fi ağındayken çalışır.",
+                    settings.vpnAlert,
+                    { on ->
+                        val needsPermission = on &&
+                            Build.VERSION.SDK_INT >= 33 &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        if (needsPermission) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.setVpnAlert(on)
+                    },
+                )
+                KDivider()
+                KSwitchRow(
+                    "Geliştirmeye yardımcı ol",
+                    "Günde en çok bir kez rastgele kurulum kimliği, uygulama sürümü ve adı gönderilir. Modem adresin, şifren, sunucuların, cihazların ve trafiğin gönderilmez.",
+                    settings.statsConsent == 1,
+                    { vm.setStatsConsent(it) },
+                )
             }
         }
         item {
             Text(
                 "AW1K Panel v$APP_VERSION",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
         }
     }

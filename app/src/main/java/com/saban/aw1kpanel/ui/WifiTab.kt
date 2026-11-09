@@ -4,30 +4,27 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Surface
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedButton
-import com.saban.aw1kpanel.data.AppSettings
-import com.saban.aw1kpanel.data.WifiClient
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,9 +35,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.saban.aw1kpanel.R
+import com.saban.aw1kpanel.data.AppSettings
+import com.saban.aw1kpanel.data.WifiClient
 import com.saban.aw1kpanel.data.WifiNetwork
 
 private fun encryptionLabel(e: String): String = when (e) {
@@ -52,12 +57,21 @@ private fun encryptionLabel(e: String): String = when (e) {
     else -> e
 }
 
+/** Ağın frekansı: bağlı istemcilerin bandından, yoksa ağ adından tahmin edilir. */
+private fun bandOf(w: WifiNetwork, clients: List<WifiClient>): String? {
+    clients.firstOrNull { it.band.isNotBlank() }?.band?.let { return it }
+    val s = w.ssid.lowercase()
+    return when {
+        "5g" in s || "5ghz" in s || "_5" in s -> "5 GHz"
+        "2.4" in s || "2g" in s || "24g" in s -> "2.4 GHz"
+        else -> null
+    }
+}
+
 @Composable
 internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     // Misafir ağı kapalıyken ayrı Wi-Fi kartı gösterilmez (Misafir Wi-Fi kartından yönetilir)
     val wifi = state.wifi.filter { it.section != "guest_wifi" || it.enabled }
-    val onToggle: (WifiNetwork, Boolean) -> Unit = vm::setWifi
-    val onEdit: (String) -> Unit = vm::openWifiEditor
     var pendingOff by remember { mutableStateOf<WifiNetwork?>(null) }
     var blockTarget by remember { mutableStateOf<WifiClient?>(null) }
     var revealed by remember { mutableStateOf(setOf<String>()) }
@@ -67,131 +81,31 @@ internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) 
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            val activeNets = wifi.count { it.enabled }
-            val totalClients = wifi.filter { it.enabled }.sumOf { w -> state.wifiClients.count { it.section == w.section } }
-            SectionCard(brush = HeaderBrush) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text("Wi-Fi", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
-                        Text(
-                            if (activeNets > 0) "$activeNets ağ yayında" else "Yayın kapalı",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            "$totalClients",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        Text("bağlı istemci", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
-                    }
-                }
-            }
-        }
-        item {
-            Row(
-                Modifier.fillMaxWidth().clickable { vm.setHideDeviceData(!settings.hideDeviceData) }.padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("IP / MAC gizle", style = MaterialTheme.typography.bodyLarge)
-                    Text("Bir istemciye dokununca o cihazın bilgisi açılır.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = settings.hideDeviceData, onCheckedChange = vm::setHideDeviceData)
-            }
-        }
+        item { WifiHero(state, wifi, settings, vm) }
         if (wifi.isEmpty()) {
             item { Text("Wi-Fi ağı bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         items(wifi, key = { it.section }) { w ->
-            val tintOn = MaterialTheme.colorScheme.primary
-            val tintOff = MaterialTheme.colorScheme.onSurfaceVariant
             val cl = state.wifiClients.filter { it.section == w.section }
-            SectionCard {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconBadge(
-                        icon = R.drawable.ic_nav_wifi,
-                        tint = if (w.enabled) tintOn else tintOff,
-                        background = if (w.enabled) {
-                            tintOn.copy(alpha = 0.16f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        size = 52,
+            NetworkCard(
+                w = w,
+                clients = cl,
+                open = w.section in expanded,
+                onOpen = { expanded = if (w.section in expanded) expanded - w.section else expanded + w.section },
+                onToggle = { on -> if (on) vm.setWifi(w, true) else if (!vm.blockWifiOff(w)) pendingOff = w },
+                onEdit = { vm.openWifiEditor(w.section) },
+            ) {
+                cl.forEach { c ->
+                    val hide = settings.hideDeviceData && c.mac !in revealed
+                    ClientRow(
+                        c = c,
+                        dev = state.devices.firstOrNull { it.mac.equals(c.mac, true) },
+                        blocked = c.mac in state.blocked,
+                        hide = hide,
+                        onReveal = { revealed = if (c.mac in revealed) revealed - c.mac else revealed + c.mac },
+                        onUnblock = { vm.blockMac(c.mac, false) },
+                        onBlock = { blockTarget = c },
                     )
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(w.ssid.ifEmpty { "(adsız)" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            if (w.enabled) "Yayında · ${cl.size} istemci" else "Kapalı",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (w.enabled) Good else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                    Switch(
-                        checked = w.enabled,
-                        onCheckedChange = { on -> if (on) onToggle(w, true) else if (!vm.blockWifiOff(w)) pendingOff = w },
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Chip(w.radio)
-                        Chip(encryptionLabel(w.encryption))
-                    }
-                    FilledTonalButton(onClick = { onEdit(w.section) }) { Text("Ayarlar") }
-                }
-                if (w.enabled) {
-                    val open = w.section in expanded
-                    Spacer(Modifier.height(6.dp))
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
-                            expanded = if (open) expanded - w.section else expanded + w.section
-                        }.padding(vertical = 10.dp, horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Bağlı istemciler (${cl.size})", fontWeight = FontWeight.Medium)
-                        Text(if (open) "▾" else "▸", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    AnimatedVisibility(visible = open) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (cl.isEmpty()) Text("Bağlı istemci yok.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            cl.forEach { c ->
-                                val dev = state.devices.firstOrNull { it.mac.equals(c.mac, true) }
-                                val blocked = c.mac in state.blocked
-                                val hide = settings.hideDeviceData && c.mac !in revealed
-                                ClientRow(
-                                    c = c,
-                                    dev = dev,
-                                    blocked = blocked,
-                                    hide = hide,
-                                    onReveal = { revealed = if (c.mac in revealed) revealed - c.mac else revealed + c.mac },
-                                    onUnblock = { vm.blockMac(c.mac, false) },
-                                    onBlock = { blockTarget = c },
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -213,12 +127,136 @@ internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) 
             onDismissRequest = { pendingOff = null },
             title = { Text("Wi-Fi kapatılsın mı?") },
             text = { Text("\"${w.ssid}\" kapatılırsa bu ağa bağlı cihazların (telefonun dahil) bağlantısı kesilir.") },
-            confirmButton = {
-                TextButton(onClick = { onToggle(w, false); pendingOff = null }) { Text("Kapat") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingOff = null }) { Text("Vazgeç") }
-            },
+            confirmButton = { TextButton(onClick = { vm.setWifi(w, false); pendingOff = null }) { Text("Kapat") } },
+            dismissButton = { TextButton(onClick = { pendingOff = null }) { Text("Vazgeç") } },
+        )
+    }
+}
+
+@Composable
+private fun WifiHero(state: UiState, wifi: List<WifiNetwork>, settings: AppSettings, vm: PanelViewModel) {
+    val on = wifi.filter { it.enabled }
+    val total = on.sumOf { w -> state.wifiClients.count { it.section == w.section } }
+    val g = state.guest
+    SectionCard(brush = HeaderBrush) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Wi-Fi", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.78f))
+                Text(
+                    if (on.isNotEmpty()) "${on.size} ağ yayında" else "Yayın kapalı",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+            Box(
+                Modifier.size(78.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$total", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("cihaz", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            wifi.take(2).forEach { w ->
+                val n = state.wifiClients.count { it.section == w.section }
+                KGlassTile(
+                    w.ssid.ifEmpty { "(adsız)" },
+                    if (w.enabled) "$n cihaz" else "Kapalı",
+                    Modifier.weight(1f),
+                )
+            }
+            KGlassTile(
+                "Misafir",
+                when {
+                    g == null || !g.exists -> "Yok"
+                    g.enabled -> "Açık"
+                    else -> "Kapalı"
+                },
+                Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        // IP / MAC gizleme: degrade kart içinde küçük anahtar
+        Surface(
+            onClick = { vm.setHideDeviceData(!settings.hideDeviceData) },
+            shape = RoundedCornerShape(50),
+            color = Color.White.copy(alpha = if (settings.hideDeviceData) 0.24f else 0.12f),
+        ) {
+            Text(
+                (if (settings.hideDeviceData) "🙈 IP / MAC gizli" else "👁 IP / MAC görünür") + "  ·  değiştir",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NetworkCard(
+    w: WifiNetwork,
+    clients: List<WifiClient>,
+    open: Boolean,
+    onOpen: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+    clientRows: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val band = bandOf(w, clients)
+    SectionCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBadge(
+                icon = R.drawable.ic_nav_wifi,
+                tint = if (w.enabled) scheme.primary else scheme.onSurfaceVariant,
+                background = if (w.enabled) scheme.primary.copy(alpha = 0.16f) else scheme.surfaceVariant,
+                size = 48,
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    w.ssid.ifEmpty { "(adsız)" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (w.enabled) KPill("Yayında", Good, dot = true) else KPill("Kapalı", scheme.onSurfaceVariant, dot = true)
+            }
+            Switch(checked = w.enabled, onCheckedChange = onToggle)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("Frekans", band ?: "—", Modifier.weight(1f))
+            KTile("Güvenlik", "🔒 " + encryptionLabel(w.encryption), Modifier.weight(1f))
+            KTile("Cihaz", if (w.enabled) "${clients.size}" else "—", Modifier.weight(0.7f))
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f)) { Text("⚙  Ayarlar") }
+            if (w.enabled) {
+                FilledTonalButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
+                    Text("Cihazlar (${clients.size}) " + if (open) "▴" else "▾")
+                }
+            }
+        }
+        AnimatedVisibility(visible = w.enabled && open) {
+            Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (clients.isEmpty()) {
+                    Text("Bağlı cihaz yok.", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                }
+                clientRows()
+            }
+        }
+        Text(
+            w.radio,
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 8.dp, start = 2.dp),
         )
     }
 }
@@ -255,28 +293,16 @@ private fun SignalBars(dbm: Int) {
     val level = signalLevel(dbm)
     val on = signalColor(dbm)
     val off = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom, modifier = Modifier.height(20.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom, modifier = Modifier.height(18.dp)) {
         for (i in 1..4) {
             Box(
                 Modifier
                     .width(4.dp)
-                    .height((5 + i * 4).dp)
+                    .height((4 + i * 3.5f).dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(if (i <= level) on else off),
             )
         }
-    }
-}
-
-@Composable
-private fun StatPill(text: String, color: Color) {
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(color.copy(alpha = 0.14f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    ) {
-        Text(text, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -291,50 +317,73 @@ private fun ClientRow(
     onBlock: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val name = dev?.hostname?.takeIf { it.isNotBlank() } ?: "Bilinmeyen cihaz"
+    var menu by remember { mutableStateOf(false) }
     Surface(
         onClick = onReveal,
         shape = RoundedCornerShape(18.dp),
-        color = scheme.surfaceVariant.copy(alpha = 0.6f),
+        color = scheme.surfaceVariant.copy(alpha = 0.55f),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SignalBars(c.signal)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
+                // Baş harf rozeti
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(if (blocked) Bad.copy(alpha = 0.18f) else scheme.primary.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
-                        dev?.hostname ?: "(bilinmeyen cihaz)",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        ((dev?.ip?.let { if (hide) maskIp(it) else it } ?: "—") + " · " + (if (hide) maskMac(c.mac) else c.mac)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
+                        name.first().uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        color = if (blocked) Bad else scheme.primary,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
-                if (blocked) Chip("Engelli", Bad) else Chip(c.band)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        (dev?.ip?.let { if (hide) maskIp(it) else it } ?: "—") + " · " + (if (hide) maskMac(c.mac) else c.mac),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    SignalBars(c.signal)
+                    Text("${c.signal} dBm", fontSize = 10.sp, color = signalColor(c.signal))
+                }
+                Box {
+                    TextButton(onClick = { menu = true }) { Text("⋮", style = MaterialTheme.typography.titleMedium) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (blocked) {
+                            DropdownMenuItem(text = { Text("Engeli kaldır") }, onClick = { menu = false; onUnblock() })
+                        } else {
+                            DropdownMenuItem(text = { Text("Wi-Fi'dan engelle", color = Bad) }, onClick = { menu = false; onBlock() })
+                        }
+                        DropdownMenuItem(
+                            text = { Text(if (hide) "IP / MAC göster" else "IP / MAC gizle") },
+                            onClick = { menu = false; onReveal() },
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                StatPill("↓ ${c.rxMbps} Mb/sn", scheme.primary)
-                StatPill("↑ ${c.txMbps} Mb/sn", scheme.primary)
-                StatPill("${c.signal} dBm", signalColor(c.signal))
+                if (blocked) KPill("Engelli", Bad)
+                KPill("↓ ${c.rxMbps} Mb/sn")
+                KPill("↑ ${c.txMbps} Mb/sn")
+                if (c.band.isNotBlank()) KPill(c.band, scheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(6.dp))
             Text(
-                "Veri: ↓${fmtBytes(c.txBytes)} ↑${fmtBytes(c.rxBytes)} · Bağlı: ${c.secs?.let { fmtSecs(it) } ?: "—"}" +
-                    (dev?.let { " · Yön: " + when (it.mode) { "direct" -> "Direkt"; "block" -> "Engelli"; else -> "VPN" } } ?: ""),
-                style = MaterialTheme.typography.bodySmall,
+                "Bugün ↓${fmtBytes(c.txBytes)} ↑${fmtBytes(c.rxBytes)} · Bağlı ${c.secs?.let { fmtSecs(it) } ?: "—"}" +
+                    (dev?.let { " · " + when (it.mode) { "direct" -> "Direkt"; "block" -> "Engelli"; else -> "VPN" } } ?: ""),
+                style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
             )
-            Spacer(Modifier.height(8.dp))
-            if (blocked) {
-                OutlinedButton(onClick = onUnblock) { Text("Engeli kaldır") }
-            } else {
-                OutlinedButton(onClick = onBlock, colors = ButtonDefaults.outlinedButtonColors(contentColor = Bad)) { Text("Wi-Fi'dan engelle") }
-            }
         }
     }
 }
@@ -345,51 +394,59 @@ private fun GuestCard(state: UiState, vm: PanelViewModel) {
     var ssid by remember(g) { mutableStateOf(g?.ssid?.ifEmpty { null } ?: "AW1K-Misafir") }
     var key by remember(g) { mutableStateOf(g?.key.orEmpty()) }
     var show by remember { mutableStateOf(false) }
+    var edit by remember(g?.exists) { mutableStateOf(g != null && !g.exists) }
+    val scheme = MaterialTheme.colorScheme
     SectionCard {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                CardTitle(R.drawable.ic_nav_wifi, "Misafir Wi-Fi")
-                Text(
-                    when {
-                        g == null -> "Durum okunamadı (modemde eklenti güncel mi?)"
-                        !g.exists -> "Henüz oluşturulmadı"
-                        g.enabled -> "Yayında · ana ağdan ayrı, cihazlar birbirini görmez"
-                        else -> "Kapalı"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (g != null && g.exists) {
-                Switch(checked = g.enabled, onCheckedChange = { vm.saveGuest(it, g.ssid, g.key) })
-            }
-        }
+        KHeader(
+            title = "Misafir Wi-Fi",
+            subtitle = when {
+                g == null -> "Durum okunamadı (modemde eklenti güncel mi?)"
+                !g.exists -> "Henüz oluşturulmadı"
+                g.enabled -> "Yayında · ana ağdan ayrı"
+                else -> "Kapalı"
+            },
+            icon = R.drawable.ic_nav_wifi,
+            tint = if (g?.enabled == true) Good else scheme.primary,
+            trailing = if (g != null && g.exists) {
+                { Switch(checked = g.enabled, onCheckedChange = { vm.saveGuest(it, g.ssid, g.key) }) }
+            } else null,
+        )
         if (g != null) {
-            Spacer(Modifier.height(10.dp))
-            androidx.compose.material3.OutlinedTextField(
-                value = ssid, onValueChange = { ssid = it },
-                label = { Text("Ağ adı") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            androidx.compose.material3.OutlinedTextField(
-                value = key, onValueChange = { key = it },
-                label = { Text("Şifre (en az 8 karakter)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (show) androidx.compose.ui.text.input.VisualTransformation.None
-                else androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Gizle" else "Göster") } },
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { vm.saveGuest(if (g.exists) g.enabled else true, ssid, key) },
-                enabled = ssid.isNotBlank() && key.length >= 8,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-            ) { Text(if (g.exists) "Kaydet" else "Oluştur ve aç") }
+            if (g.exists) {
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KTile("Ağ adı", g.ssid.ifEmpty { "—" }, Modifier.weight(1f))
+                    KTile("Şifre", if (g.key.isEmpty()) "—" else "••••••••", Modifier.weight(1f))
+                }
+                TextButton(onClick = { edit = !edit }) { Text(if (edit) "Düzenlemeyi kapat ▴" else "Ad ve şifreyi değiştir ▾") }
+            }
+            AnimatedVisibility(visible = edit) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    OutlinedTextField(
+                        value = ssid, onValueChange = { ssid = it },
+                        label = { Text("Ağ adı") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    OutlinedTextField(
+                        value = key, onValueChange = { key = it },
+                        label = { Text("Şifre (en az 8 karakter)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Gizle" else "Göster") } },
+                    )
+                    Button(
+                        onClick = { vm.saveGuest(if (g.exists) g.enabled else true, ssid, key); edit = false },
+                        enabled = ssid.isNotBlank() && key.length >= 8,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                    ) { Text(if (g.exists) "Kaydet" else "Oluştur ve aç") }
+                }
+            }
             Text(
-                "Misafirler yalnızca internete çıkar, yerel ağa erişemez. İlk oluşturmada ağ ayarları yeniden yüklenir; birkaç saniye bağlantı kesilebilir. Misafir ağ KediRay VPN'inden geçmeyebilir.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
+                "Misafirler yalnızca internete çıkar, yerel ağa erişemez ve birbirini görmez. İlk oluşturmada ağ ayarları yeniden yüklenir; birkaç saniye bağlantı kesilebilir. Misafir ağ KediRay VPN'inden geçmeyebilir.",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }

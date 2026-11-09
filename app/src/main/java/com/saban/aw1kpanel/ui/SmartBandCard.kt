@@ -1,6 +1,12 @@
 package com.saban.aw1kpanel.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,7 +46,33 @@ private fun scanClassLabel(c: String) = when (c) {
 
 private fun f1(v: Float?) = if (v == null) "—" else "%.1f".format(v)
 
+private fun scanClassShort(c: String) = when (c) {
+    "NR_NSA" -> "5G NSA"
+    "NR" -> "5G SA"
+    "LTE" -> "4G LTE"
+    else -> c
+}
+
+@Composable
+private fun SmartLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
+}
+
+@Composable
+private fun Stepper(value: Int, enabled: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(scheme.surfaceVariant),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onMinus, enabled = enabled) { Text("−", style = MaterialTheme.typography.titleMedium) }
+        Text("$value sn", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(52.dp), textAlign = TextAlign.Center)
+        TextButton(onClick = onPlus, enabled = enabled) { Text("+", style = MaterialTheme.typography.titleMedium) }
+    }
+}
+
 /** Her bandı tek tek kilitleyip hız/sinyal ölçen, en iyisini seçen kart. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SmartBandCard(state: UiState, vm: PanelViewModel) {
     val lb = state.lockband ?: return
@@ -61,102 +93,75 @@ internal fun SmartBandCard(state: UiState, vm: PanelViewModel) {
     val chosen = allIds.filter { it in picked }
 
     SectionCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardTitle(R.drawable.ic_nav_band, "Akıllı band seçimi")
-            Chip("SPEEDTEST")
-        }
-        Spacer(Modifier.height(6.dp))
+        KHeader(
+            title = "Akıllı band seçimi",
+            subtitle = "Bantları tek tek dener, en hızlısını seçer",
+            emoji = "⚡",
+            trailing = { KPill(if (useSpeed) "SPEEDTEST" else "SİNYAL") },
+        )
         Text(
-            "Seçtiğin bantları tek tek kilitler, her birinde hız ve sinyali ölçer, en hızlısını seçer. " +
-                "Telefon modemin Wi-Fi ağında olmalı. Her denemede bağlantı kısa süre kesilir.",
+            "Telefon modemin Wi-Fi ağında olmalı. Her denemede bağlantı kısa süre kesilir.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
         )
 
-        Spacer(Modifier.height(10.dp))
-        Text("5G tipi", style = MaterialTheme.typography.labelLarge)
-        classes.forEach { c ->
-            Row(
-                Modifier.fillMaxWidth().clickable(enabled = !busy) { cls = c },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = c == selCls, onClick = { cls = c }, enabled = !busy)
-                Text(scanClassLabel(c), style = MaterialTheme.typography.bodyMedium)
+        SmartLabel("Şebeke tipi")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            classes.forEach { c ->
+                KToggle(scanClassShort(c), c == selCls, onClick = { cls = c }, enabled = !busy, modifier = Modifier.weight(1f))
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Denenecek bantlar", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            TextButton(onClick = { picked = allIds.toSet() }, enabled = !busy) { Text("Tümü") }
-            TextButton(onClick = { picked = emptySet() }, enabled = !busy) { Text("Kaldır") }
-        }
-        group.available.chunked(3).forEach { triple ->
-            Row(Modifier.fillMaxWidth()) {
-                triple.forEach { (id, name) ->
-                    Row(
-                        Modifier.weight(1f).clickable(enabled = !busy) {
-                            picked = if (id in picked) picked - id else picked + id
-                        },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = id in picked,
-                            onCheckedChange = { picked = if (it) picked + id else picked - id },
-                            enabled = !busy,
-                        )
-                        Text(name, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                repeat(3 - triple.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Bekleme / aday (sn)", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { waitSec = (waitSec - 5).coerceAtLeast(10) }, enabled = !busy) { Text("−") }
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "$waitSec",
-                modifier = Modifier.width(44.dp),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
+                "Denenecek bantlar · ${chosen.size}/${allIds.size}",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f),
             )
-            OutlinedButton(onClick = { waitSec = (waitSec + 5).coerceAtMost(60) }, enabled = !busy) { Text("+") }
+            TextButton(onClick = { picked = allIds.toSet() }, enabled = !busy) { Text("Tümü") }
+            TextButton(onClick = { picked = emptySet() }, enabled = !busy) { Text("Hiçbiri") }
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            group.available.forEach { (id, name) ->
+                KToggle(shortBand(name), id in picked, onClick = { picked = if (id in picked) picked - id else picked + id }, enabled = !busy)
+            }
         }
 
-        Spacer(Modifier.height(8.dp))
-        Text("Ölçüm", style = MaterialTheme.typography.labelLarge)
-        Row(
-            Modifier.fillMaxWidth().clickable(enabled = !busy) { useSpeed = true },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(selected = useSpeed, onClick = { useSpeed = true }, enabled = !busy)
-            Text("Speedtest (önerilen)", style = MaterialTheme.typography.bodyMedium)
-        }
-        Row(
-            Modifier.fillMaxWidth().clickable(enabled = !busy) { useSpeed = false },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(selected = !useSpeed, onClick = { useSpeed = false }, enabled = !busy)
-            Text("Sadece sinyal (hızlı, veri harcamaz)", style = MaterialTheme.typography.bodyMedium)
-        }
-        Row(
-            Modifier.fillMaxWidth().clickable(enabled = !busy) { autoApply = !autoApply },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(checked = autoApply, onCheckedChange = { autoApply = it }, enabled = !busy)
-            Text("En iyisini otomatik uygula", style = MaterialTheme.typography.bodyMedium)
+        SmartLabel("Ölçüm")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KToggle("Speedtest (önerilen)", useSpeed, onClick = { useSpeed = true }, enabled = !busy, modifier = Modifier.weight(1f))
+            KToggle("Sadece sinyal", !useSpeed, onClick = { useSpeed = false }, enabled = !busy, modifier = Modifier.weight(1f))
         }
 
-        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Bekleme / aday", style = MaterialTheme.typography.labelLarge)
+                Text("Her bantta ölçümden önce", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Stepper(waitSec, enabled = !busy, onMinus = { waitSec = (waitSec - 5).coerceAtLeast(10) }, onPlus = { waitSec = (waitSec + 5).coerceAtMost(60) })
+        }
+        KSwitchRow("En iyisini otomatik uygula", null, autoApply, { autoApply = it }, enabled = !busy)
+
+        Spacer(Modifier.height(6.dp))
         if (busy) {
             Button(
                 onClick = { vm.cancelBandScan() },
                 colors = ButtonDefaults.buttonColors(containerColor = Bad),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(25.dp),
             ) { Text("İptal") }
         } else {
-            Button(onClick = { confirm = true }, enabled = chosen.isNotEmpty()) { Text("Taramayı başlat") }
+            Button(
+                onClick = { confirm = true },
+                enabled = chosen.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(25.dp),
+            ) { Text("⚡ Taramayı başlat") }
             if (chosen.isEmpty()) {
                 Text(
                     "En az bir bant seç.",
@@ -168,7 +173,7 @@ internal fun SmartBandCard(state: UiState, vm: PanelViewModel) {
         }
 
         if (scan.running || scan.finished) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
             ScanProgress(scan)
         }
     }
@@ -199,88 +204,68 @@ internal fun SmartBandCard(state: UiState, vm: PanelViewModel) {
 
 @Composable
 private fun ScanProgress(scan: BandScanState) {
+    val scheme = MaterialTheme.colorScheme
     if (scan.running) {
-        Text(
-            scan.phase.ifEmpty { "Çalışıyor…" },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                scan.phase.ifEmpty { "Çalışıyor…" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${scan.done}/${scan.total}", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { if (scan.total == 0) 0f else scan.done.toFloat() / scan.total },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            "${scan.done}/${scan.total}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
         )
     }
     scan.note?.let {
-        Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+        Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
     }
     if (scan.rows.isEmpty()) return
 
-    Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth()) {
-        listOf("Bant" to 1.5f, "Hız" to 1.3f, "SNR" to 0.8f, "RSRP" to 0.9f, "Skor" to 1f).forEach { (t, w) ->
-            Text(
-                t,
-                modifier = Modifier.weight(w),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-    scan.rows.forEach { r ->
-        val best = r.id == scan.bestId && r.ok
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column1(1.5f) {
-                Text(
-                    r.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (best) FontWeight.Bold else FontWeight.Normal,
-                    color = if (best) Good else MaterialTheme.colorScheme.onSurface,
-                )
-                if (best) Chip("EN İYİ", Good)
-                else if (r.used.isNotEmpty() && r.used != r.name) {
-                    Text(r.used, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(10.dp))
+    val sorted = scan.rows.sortedWith(compareByDescending<com.saban.aw1kpanel.data.ScanRow> { it.ok }.thenByDescending { it.score })
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        sorted.forEach { r ->
+            val best = r.id == scan.bestId && r.ok
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (best) Good.copy(alpha = 0.12f) else scheme.surfaceVariant.copy(alpha = 0.55f),
+                border = if (best) androidx.compose.foundation.BorderStroke(1.5.dp, Good) else null,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(shortBand(r.name), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            if (best) KPill("EN İYİ", Good)
+                        }
+                        if (r.note.isNotEmpty() && !r.ok) {
+                            Text(r.note, style = MaterialTheme.typography.labelSmall, color = Bad)
+                        } else {
+                            Text(
+                                "SNR ${f1(r.sinr)} · RSRP ${f1(r.rsrp)}" + if (r.used.isNotEmpty() && r.used != r.name) " · ${r.used}" else "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (r.ok || r.mbps != null) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                if (r.mbps == null) "—" else f1(r.mbps),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (best) Good else scheme.onSurface,
+                            )
+                            Text(if (r.mbps == null) "skor %.0f".format(r.score) else "Mbps", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
-            if (r.note.isNotEmpty() && !r.ok) {
-                Text(
-                    r.note,
-                    modifier = Modifier.weight(4f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Bad,
-                )
-            } else {
-                Text(
-                    if (r.mbps == null) "—" else f1(r.mbps) + " Mbps",
-                    modifier = Modifier.weight(1.3f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(f1(r.sinr), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.bodyMedium)
-                Text(f1(r.rsrp), modifier = Modifier.weight(0.9f), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    "%.0f".format(r.score),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.RowScope.Column1(
-    weight: Float,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
-) {
-    androidx.compose.foundation.layout.Column(Modifier.weight(weight), content = content)
 }

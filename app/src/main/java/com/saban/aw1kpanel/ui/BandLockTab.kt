@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.saban.aw1kpanel.R
 import com.saban.aw1kpanel.data.BandGroup
 
+/** "NSA_NR_N78" -> "N78", "LTE_BC3" -> "BC3": uzun bant adlarının son parçası. */
+internal fun shortBand(name: String): String = name.substringAfterLast('_').ifEmpty { name }
+
 private fun className(c: String) = when (c) {
     "UMTS" -> "UMTS (3G)"
     "LTE" -> "LTE (4G)"
@@ -57,12 +60,10 @@ internal fun BandLockTab(state: UiState, settings: com.saban.aw1kpanel.data.AppS
     ) {
         item {
             SectionCard {
-                CardTitle(R.drawable.ic_nav_band, "Band kilidi")
-                Text(
-                    "Modemin hangi bantlara bağlanabileceğini seç. Yalnızca seçili bantlar kullanılır; " +
-                        "yanlış seçim bağlantıyı kesebilir. Hepsini seçmek kilidi kaldırır.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                KHeader(
+                    "Band kilidi",
+                    "Modemin hangi bantlara bağlanabileceğini seç. Yanlış seçim bağlantıyı kesebilir; hepsini seçmek kilidi kaldırır.",
+                    icon = R.drawable.ic_nav_band,
                 )
             }
         }
@@ -82,7 +83,7 @@ internal fun BandLockTab(state: UiState, settings: com.saban.aw1kpanel.data.AppS
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun BandClassCard(cls: String, group: BandGroup, vm: PanelViewModel) {
     val ids = group.available.map { it.first }
@@ -91,28 +92,26 @@ private fun BandClassCard(cls: String, group: BandGroup, vm: PanelViewModel) {
     val changed = sel != group.locked.filter { it in ids }.toSet()
 
     SectionCard {
-        Text(className(cls), style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(6.dp))
-        group.available.chunked(2).forEach { pair ->
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                pair.forEach { (id, name) ->
-                    FilterChip(
-                        selected = id in sel,
-                        onClick = { sel = if (id in sel) sel - id else sel + id },
-                        label = { Text(name, maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
+        KHeader(
+            title = className(cls),
+            subtitle = if (sel.size == ids.size) "Kilit yok · tüm bantlar açık" else "${sel.size} / ${ids.size} bant seçili",
+            emoji = "📡",
+            trailing = { if (changed) KPill("Değişti", Warn, dot = true) },
+        )
+        Spacer(Modifier.height(12.dp))
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            group.available.forEach { (id, name) ->
+                KToggle(shortBand(name), id in sel, onClick = { sel = if (id in sel) sel - id else sel + id })
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = { sel = ids.toSet() }) { Text("Hepsini seç") }
-            Button(onClick = { confirm = true }, enabled = sel.isNotEmpty() && changed) { Text("Gönder") }
+            OutlinedButton(onClick = { sel = ids.toSet() }, modifier = Modifier.weight(1f)) { Text("Hepsini seç") }
+            Button(onClick = { confirm = true }, enabled = sel.isNotEmpty() && changed, modifier = Modifier.weight(1f)) { Text("Uygula") }
         }
         if (sel.isEmpty()) {
             Text(
@@ -174,12 +173,7 @@ private fun PasswordGate(vm: PanelViewModel) {
     LazyColumn(contentPadding = PaddingValues(vertical = 12.dp)) {
         item {
             SectionCard {
-                CardTitle(R.drawable.ic_nav_band, "Band kilidi şifreli")
-                Text(
-                    "Bu sayfayı açmak için şifreni gir.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                KHeader("Band kilidi şifreli", "Bu sayfayı açmak için şifreni gir.", icon = R.drawable.ic_nav_band)
                 Spacer(Modifier.height(10.dp))
                 androidx.compose.material3.OutlinedTextField(
                     value = pw,
