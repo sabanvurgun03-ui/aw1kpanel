@@ -1181,8 +1181,8 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             repo.kediSetNodeEnabled(section, on)
         }
 
-    fun moveKediNode(section: String, up: Boolean) = act(if (up) "Yukarı taşındı" else "Aşağı taşındı") {
-        repo.kediMoveNode(section, up)
+    fun moveKediNode(section: String, up: Boolean, steps: Int = 1) = act(if (up) "Yukarı taşındı" else "Aşağı taşındı") {
+        repo.kediMoveNode(section, up, steps)
     }
 
     fun deleteKediNode(section: String) = act("Düğüm silindi") { repo.kediDeleteNode(section) }

@@ -1302,6 +1302,7 @@ class PanelRepository(private val client: UbusClient) {
                     { idx[it.section] ?: 0 },
                 ))
             }
+            for (i in nodes.indices) nodes[i] = nodes[i].copy(order = i)
         } catch (e: UbusException) {
             // düğümler okunamadı; durum yine de gösterilir
         }
@@ -1313,6 +1314,11 @@ class PanelRepository(private val client: UbusClient) {
             } catch (e: Exception) {
                 // bilinmiyor; işaret gösterilmez
             }
+        }
+        // Aktif (seçili) sunucu her zaman listenin başında gösterilir
+        activeSec?.let { a ->
+            val i = nodes.indexOfFirst { it.section == a }
+            if (i > 0) nodes.add(0, nodes.removeAt(i))
         }
         val kv = kediVersion()
         return KediState(
@@ -1382,8 +1388,8 @@ class PanelRepository(private val client: UbusClient) {
     suspend fun kediAddNode(o: JSONObject) = kediSaveNode("new", o)
 
     /** Sunucuyu listede komşusuyla yer değiştirir (`kediray node-move <bölüm> up|down`). */
-    suspend fun kediMoveNode(section: String, up: Boolean) {
-        kediCli("node-move", section, if (up) "up" else "down")
+    suspend fun kediMoveNode(section: String, up: Boolean, steps: Int = 1) {
+        repeat(steps.coerceAtLeast(1)) { kediCli("node-move", section, if (up) "up" else "down") }
     }
 
     suspend fun kediDeleteNode(section: String) {

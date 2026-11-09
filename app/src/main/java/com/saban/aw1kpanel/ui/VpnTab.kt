@@ -395,7 +395,10 @@ private fun KediCard(
                 onDelete = { deleteNode = n },
                 canUp = i > 0,
                 canDown = i < k.nodes.lastIndex,
-                onMove = { up -> vm.moveKediNode(n.section, up) },
+                onMove = { up ->
+                    val nb = k.nodes[if (up) i - 1 else i + 1]
+                    vm.moveKediNode(n.section, up, kotlin.math.abs(n.order - nb.order))
+                },
             )
         }
 

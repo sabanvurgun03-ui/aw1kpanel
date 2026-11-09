@@ -167,6 +167,8 @@ data class KediNode(
     val enabled: Boolean,
     /** uci'deki ham `remarks` (sıralama anahtarı için). */
     val rawName: String = "",
+    /** KediRay listesindeki gerçek sıra (ekranda aktif sunucu başa alınır). */
+    val order: Int = 0,
 )
 
 data class KediState(
