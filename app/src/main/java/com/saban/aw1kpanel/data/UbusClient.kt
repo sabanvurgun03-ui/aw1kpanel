@@ -38,6 +38,7 @@ class UbusClient {
     private val jsonType = "application/json".toMediaType()
 
     @Volatile private var session: String = NULL_SESSION
+    @Volatile private var loginAt = 0L
     @Volatile private var conn: Connection? = null
 
     suspend fun login(c: Connection) {
@@ -63,7 +64,19 @@ class UbusClient {
         val c = conn ?: throw UbusException("Giriş yapılmadı")
         slots.withPermit {
             val used = session
-            var result = rawCall(c.host, used, obj, method, params)
+            var result = try {
+                rawCall(c.host, used, obj, method, params)
+            } catch (e: UbusException) {
+                // JSON-RPC "Access denied" (-32002): oturum geçersiz olabilir (modemde rpcd yeniden başladı, KediRay güncellendi
+                // ya da süre doldu). Son girişten 20 sn geçtiyse yeniden giriş yapıp bir kez daha dene; gerçekten yetki
+                // eksikse (giriş yeni) hatayı aynen ilet.
+                if (e.code != -32002) throw e
+                loginLock.withLock {
+                    if (session == used && System.currentTimeMillis() - loginAt > 20_000L) doLogin(c)
+                }
+                if (session == used) throw e
+                rawCall(c.host, session, obj, method, params)
+            }
             if (result.first == 6) {
                 // Oturum süresi dolmuş olabilir; bir kez yeniden giriş yap.
                 loginLock.withLock {
@@ -88,6 +101,7 @@ class UbusClient {
             throw UbusException("Kullanıcı adı veya şifre hatalı", code)
         }
         session = data.getString("ubus_rpc_session")
+        loginAt = System.currentTimeMillis()
     }
 
     private fun rawCall(
