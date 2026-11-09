@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -221,8 +222,9 @@ internal fun HomeModemCard(m: ModemState, error: String?) {
 // ---- 2) Sistem kartı ------------------------------------------------------
 
 @Composable
-internal fun HomeSystemCard(s: SystemState?) {
+internal fun HomeSystemCard(s: SystemState?, d: com.saban.aw1kpanel.data.SysDetails? = null) {
     val scheme = MaterialTheme.colorScheme
+    var details by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Sistem", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -260,6 +262,79 @@ internal fun HomeSystemCard(s: SystemState?) {
                 Spacer(Modifier.height(6.dp))
                 Text(homeDuration(s.uptimeSeconds), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text("Çalışma süresi", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            }
+        }
+        if (d != null) {
+            TextButton(onClick = { details = !details }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(if (details) "Detayları gizle ▴" else "Detaylar ▾")
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = details) {
+                SysDetailsBlock(d)
+            }
+        }
+    }
+}
+
+private fun mb(b: Long): String = when {
+    b >= 1L shl 30 -> "%.1f GB".format(b / 1073741824.0)
+    else -> "%.1f MB".format(b / 1048576.0)
+}
+
+@Composable
+private fun SysDetailsBlock(d: com.saban.aw1kpanel.data.SysDetails) {
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("RAM kullanılan", mb(d.memUsed), Modifier.weight(1f), sub = "toplam ${mb(d.memTotal)}",
+                bar = if (d.memTotal > 0) d.memUsed.toFloat() / d.memTotal else null, barColor = loadColor(if (d.memTotal > 0) (d.memUsed * 100 / d.memTotal).toInt() else 0))
+            KTile("RAM önbellek", mb(d.cached), Modifier.weight(1f), sub = "gerektiğinde boşalır")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val cf = if (d.conn != null && d.connMax != null && d.connMax > 0) d.conn.toFloat() / d.connMax else null
+            KTile(
+                "Bağlantılar", d.conn?.toString() ?: "—", Modifier.weight(1f),
+                sub = d.connMax?.let { "en çok $it" },
+                bar = cf, barColor = loadColor(((cf ?: 0f) * 100).toInt()),
+            )
+            val rf = if (d.rootFree != null && d.rootTotal != null && d.rootTotal > 0) 1f - d.rootFree.toFloat() / d.rootTotal else null
+            KTile(
+                "Depolama (boş)", d.rootFree?.let { mb(it) } ?: "—", Modifier.weight(1f),
+                sub = d.rootTotal?.let { "toplam ${mb(it)}" },
+                bar = rf, barColor = loadColor(((rf ?: 0f) * 100).toInt()),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val tf = if (d.tmpFree != null && d.tmpTotal != null && d.tmpTotal > 0) 1f - d.tmpFree.toFloat() / d.tmpTotal else null
+            KTile(
+                "Geçici bellek (boş)", d.tmpFree?.let { mb(it) } ?: "—", Modifier.weight(1f),
+                sub = d.tmpTotal?.let { "toplam ${mb(it)}" },
+                bar = tf, barColor = loadColor(((tf ?: 0f) * 100).toInt()),
+            )
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(scheme.surfaceVariant.copy(alpha = 0.45f))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        ) {
+            listOf(
+                "Yazılım" to d.release,
+                "Çekirdek" to d.kernel,
+                "Model" to d.model,
+                "İşlemci" to d.cpu,
+            ).filter { it.second != null }.forEachIndexed { i, (k, v) ->
+                if (i > 0) KDivider()
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(k, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.width(88.dp))
+                    Text(
+                        v!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }

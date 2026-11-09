@@ -758,6 +758,107 @@ class PanelRepository(private val client: UbusClient) {
         )
     }
 
+    /** Ağ arayüzleri ve internet (WAN) bağlantısı: IP, ağ geçidi, DNS, protokol, süre. */
+    suspend fun netDetails(): NetDetails {
+        val arr = client.call("network.interface", "dump").optJSONArray("interface") ?: JSONArray()
+        val rows = mutableListOf<IfaceRow>()
+        var wan: WanInfo? = null
+        var wanScore = -1
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val name = o.optString("interface")
+            if (name.isEmpty() || name == "loopback") continue
+            val up = o.optBoolean("up")
+            val dev = o.optString("l3_device").ifEmpty { o.optString("device") }
+            val proto = o.optString("proto")
+            val v4 = o.optJSONArray("ipv4-address")?.optJSONObject(0)?.let { a ->
+                a.optString("address").takeIf { it.isNotEmpty() }?.let { ip -> if (a.has("mask")) "$ip/${a.optInt("mask")}" else ip }
+            }
+            rows += IfaceRow(name, dev, proto, up, v4)
+            if (!up) continue
+            val routes = o.optJSONArray("route") ?: JSONArray()
+            var gw: String? = null
+            var hasDefault = false
+            for (k in 0 until routes.length()) {
+                val r = routes.optJSONObject(k) ?: continue
+                if (r.optString("target") == "0.0.0.0" && r.optInt("mask", -1) == 0) {
+                    hasDefault = true
+                    gw = r.optString("nexthop").takeIf { it.isNotEmpty() && it != "0.0.0.0" }
+                }
+            }
+            if (!hasDefault) continue
+            // Birden fazla varsayılan rota varsa gerçek hattı (wwan / wan) tercih et, VPN tünelini değil
+            val score = when {
+                dev.startsWith("wwan") || name.contains("wan", true) -> 3
+                name.contains("kedi", true) || dev.startsWith("tun") || dev.startsWith("kediray") -> 0
+                else -> 1
+            }
+            if (score <= wanScore) continue
+            wanScore = score
+            val v6 = o.optJSONArray("ipv6-address")?.optJSONObject(0)?.optString("address")?.takeIf { it.isNotEmpty() }
+                ?: o.optJSONArray("ipv6-prefix-assignment")?.optJSONObject(0)?.optString("address")?.takeIf { it.isNotEmpty() }
+            val dns = o.optJSONArray("dns-server")?.let { d -> (0 until d.length()).map { d.optString(it) }.filter { it.isNotEmpty() } }.orEmpty()
+            wan = WanInfo(
+                iface = name,
+                device = dev,
+                proto = proto,
+                up = up,
+                uptime = o.optLong("uptime", -1).takeIf { it >= 0 },
+                ipv4 = v4?.substringBefore('/'),
+                ipv6 = v6,
+                gateway = gw,
+                dns = dns,
+            )
+        }
+        return NetDetails(wan, rows.sortedWith(compareByDescending<IfaceRow> { it.up }.thenBy { it.name }))
+    }
+
+    /** Sistem detayları: bellek / önbellek, açık bağlantı sayısı, depolama, OpenWrt ve çekirdek sürümü. */
+    suspend fun sysDetails(): SysDetails {
+        val info = client.call("system", "info")
+        val mem = info.optJSONObject("memory")
+        val total = mem?.optLong("total") ?: 0L
+        val available = when {
+            mem == null -> 0L
+            mem.has("available") -> mem.optLong("available")
+            else -> mem.optLong("free") + mem.optLong("buffered") + mem.optLong("cached")
+        }
+        val cached = (mem?.optLong("cached") ?: 0L) + (mem?.optLong("buffered") ?: 0L)
+        // root / tmp değerleri KiB
+        fun kb(o: JSONObject?, k: String) = o?.optLong(k, -1)?.takeIf { it >= 0 }?.let { it * 1024 }
+        val root = info.optJSONObject("root")
+        val tmp = info.optJSONObject("tmp")
+        val board = try { client.call("system", "board") } catch (e: UbusException) { null }
+        val rel = board?.optJSONObject("release")
+        val release = rel?.let {
+            listOf(it.optString("description").ifEmpty { it.optString("distribution") + " " + it.optString("version") }, it.optString("revision"))
+                .filter { s -> s.isNotBlank() }.joinToString(" ").trim().ifEmpty { null }
+        }
+        suspend fun readNum(path: String): Int? = try {
+            client.call(
+                "file", "exec",
+                JSONObject().put("command", "/bin/cat").put("params", JSONArray().put(path)),
+            ).optString("stdout").trim().toIntOrNull()
+        } catch (e: UbusException) {
+            null
+        }
+        return SysDetails(
+            memUsed = (total - available).coerceAtLeast(0L),
+            memTotal = total,
+            cached = cached,
+            conn = readNum("/proc/sys/net/netfilter/nf_conntrack_count"),
+            connMax = readNum("/proc/sys/net/netfilter/nf_conntrack_max"),
+            rootFree = kb(root, "free"),
+            rootTotal = kb(root, "total"),
+            tmpFree = kb(tmp, "free"),
+            tmpTotal = kb(tmp, "total"),
+            release = release,
+            kernel = board?.optString("kernel")?.ifEmpty { null },
+            model = board?.optString("model")?.ifEmpty { null },
+            cpu = board?.optString("system")?.ifEmpty { null },
+        )
+    }
+
     /** /proc/stat'ı iki ölçüm arasındaki farkla CPU yüzdesine çevirir. */
     private suspend fun cpuPercent(): Int? {
         val out = try {

@@ -117,6 +117,8 @@ data class UiState(
     val kediPings: Map<String, com.saban.aw1kpanel.data.KediPing> = emptyMap(),
     val kediPinging: Set<String> = emptySet(),
     /** KediRay ayarlar ekranı: açık mı, okunan değerler, kaydediliyor mu. */
+    val netDetails: com.saban.aw1kpanel.data.NetDetails? = null,
+    val sysDetails: com.saban.aw1kpanel.data.SysDetails? = null,
     val kediSettingsOpen: Boolean = false,
     val kediSettings: com.saban.aw1kpanel.data.KediSettingsData? = null,
     val kediSettingsError: String? = null,
@@ -585,6 +587,8 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
         val usage = attempt { repo.usage() }
         _state.update { it.copy(usage = usage) }
+        attempt { repo.netDetails() }?.let { n -> _state.update { it.copy(netDetails = n) } }
+        attempt { repo.sysDetails() }?.let { d -> _state.update { it.copy(sysDetails = d) } }
         refreshVpn()
     }
 

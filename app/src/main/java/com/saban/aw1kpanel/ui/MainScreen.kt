@@ -396,7 +396,7 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
                         0 -> HomeTab(state, vm) { page = 5 }
                         1 -> WifiTab(state, settings, vm)
                         2 -> NetworkTab(
-                            state.modem, state.vpn, state.vpnProfileId != null,
+                            state.modem, state.netDetails, state.vpn, state.vpnProfileId != null,
                             vm::setVpn, vm::redial, vm::rebootRouter,
                         )
                         3 -> BandLockTab(state, settings, vm)
@@ -424,7 +424,7 @@ private fun HomeTab(state: UiState, vm: PanelViewModel, onOpenVpn: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { HomeModemCard(state.modem, state.modemError) }
-        item { HomeSystemCard(state.system) }
+        item { HomeSystemCard(state.system, state.sysDetails) }
         item { HomeVpnCard(state, vm, onOpenVpn) }
     }
 }
@@ -616,6 +616,7 @@ private fun SignalBars(level: Int, color: Color) {
 @Composable
 private fun NetworkTab(
     modem: ModemState,
+    net: com.saban.aw1kpanel.data.NetDetails?,
     vpn: VpnState?,
     vpnProfileKnown: Boolean,
     onVpnToggle: (Boolean) -> Unit,
@@ -666,6 +667,9 @@ private fun NetworkTab(
                 }
             }
         }
+
+        // İnternet (WAN) bağlantısı
+        net?.wan?.let { w -> item { WanCard(w) } }
 
         // Taşıyıcılar (PCC / SCC)
         if (modem.cells.isNotEmpty()) item { KGroupLabel("Taşıyıcılar") }
@@ -736,6 +740,9 @@ private fun NetworkTab(
             }
         }
 
+        // Arayüzler
+        if (net != null && net.ifaces.isNotEmpty()) item { IfacesCard(net.ifaces) }
+
         // Modem
         item {
             SectionCard {
@@ -799,6 +806,77 @@ private fun NetworkTab(
                 TextButton(onClick = { confirmRedial = false }) { Text("Vazgeç") }
             },
         )
+    }
+}
+
+/** İnternet bağlantısı: IP, ağ geçidi, DNS, protokol, arayüz ve süre. */
+@Composable
+private fun WanCard(w: com.saban.aw1kpanel.data.WanInfo) {
+    SectionCard {
+        KHeader(
+            title = "İnternet bağlantısı",
+            subtitle = "${w.iface} · ${w.device.uppercase()}",
+            icon = R.drawable.ic_nav_network,
+            trailing = { if (w.up) KPill("Çevrimiçi", Good, dot = true) else KPill("Kapalı", Bad, dot = true) },
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("IPv4 adresi", w.ipv4 ?: "—", Modifier.weight(1f))
+            KTile("Ağ geçidi", w.gateway ?: "—", Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KTile("Protokol", w.proto.uppercase().ifEmpty { "—" }, Modifier.weight(1f))
+            KTile("Süre", w.uptime?.let { formatUptimeLong(it) } ?: "—", Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        KTile("DNS sunucuları", w.dns.joinToString(", ").ifEmpty { "—" }, Modifier.fillMaxWidth())
+        if (w.ipv6 != null) {
+            Spacer(Modifier.height(8.dp))
+            KTile("IPv6 adresi", w.ipv6, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Ağ arayüzleri: açık olanlar üstte, yeşil nokta + cihaz adı + protokol + IP. */
+@Composable
+private fun IfacesCard(list: List<com.saban.aw1kpanel.data.IfaceRow>) {
+    val scheme = MaterialTheme.colorScheme
+    var open by remember { mutableStateOf(false) }
+    val active = list.count { it.up }
+    SectionCard {
+        KHeader(
+            title = "Arayüzler",
+            subtitle = "Modemin ağ arayüzleri",
+            emoji = "🔌",
+            trailing = { KPill("$active/${list.size} aktif", if (active > 0) Good else scheme.onSurfaceVariant) },
+        )
+        Spacer(Modifier.height(8.dp))
+        val shown = if (open) list else list.take(4)
+        shown.forEachIndexed { i, r ->
+            if (i > 0) KDivider()
+            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(9.dp).clip(CircleShape).background(if (r.up) Good else scheme.outline))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(r.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        listOf(r.device, r.proto).filter { it.isNotEmpty() }.joinToString(" · "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    r.ipv4 ?: if (r.up) "" else "kapalı",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (list.size > 4) {
+            TextButton(onClick = { open = !open }) { Text(if (open) "Daha az göster ▴" else "Tümünü göster (${list.size}) ▾") }
+        }
     }
 }
 

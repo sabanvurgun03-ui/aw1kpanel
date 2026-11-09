@@ -241,3 +241,38 @@ data class LogError(
 )
 
 data class LogData(val entries: List<LogEntry>, val errors: List<LogError>)
+
+/** İnternet (WAN) arayüzü: varsayılan rotası olan ve açık olan arayüz. */
+data class WanInfo(
+    val iface: String,
+    val device: String,
+    val proto: String,
+    val up: Boolean,
+    val uptime: Long?,
+    val ipv4: String?,
+    val ipv6: String?,
+    val gateway: String?,
+    val dns: List<String>,
+)
+
+/** `network.interface dump` satırı. */
+data class IfaceRow(val name: String, val device: String, val proto: String, val up: Boolean, val ipv4: String?)
+
+data class NetDetails(val wan: WanInfo?, val ifaces: List<IfaceRow>)
+
+/** Ana sayfa Sistem kartındaki "Detaylar": bellek, bağlantı, depolama ve sürüm bilgileri (bayt). */
+data class SysDetails(
+    val memUsed: Long,
+    val memTotal: Long,
+    val cached: Long,
+    val conn: Int?,
+    val connMax: Int?,
+    val rootFree: Long?,
+    val rootTotal: Long?,
+    val tmpFree: Long?,
+    val tmpTotal: Long?,
+    val release: String?,
+    val kernel: String?,
+    val model: String?,
+    val cpu: String?,
+)
