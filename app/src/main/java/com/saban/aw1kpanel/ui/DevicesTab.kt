@@ -97,7 +97,8 @@ private fun LiveBox(client: com.saban.aw1kpanel.data.WifiClient?, rate: Pair<Flo
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 DevPill("↓ " + (rate?.let { devRate(it.first) } ?: "…"), scheme.primary)
                 DevPill("↑ " + (rate?.let { devRate(it.second) } ?: "…"), scheme.primary)
-                DevPill("${client.signal} dBm", sig)
+                // 0 = modem sinyali vermedi (bilinmiyor): yanlış "0 dBm" gösterme.
+                if (client.signal != 0) DevPill("${client.signal} dBm", sig)
             }
             Spacer(Modifier.height(6.dp))
             Text(
