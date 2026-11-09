@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saban.aw1kpanel.data.AppSettings
 import com.saban.aw1kpanel.data.KediNode
+import com.saban.aw1kpanel.data.KediPing
 import com.saban.aw1kpanel.data.KediState
 import com.saban.aw1kpanel.data.PingResult
 import com.saban.aw1kpanel.data.VpnProfile
@@ -93,7 +94,7 @@ internal fun VpnTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
         }
         if (settings.showKedi) {
             state.kediray?.let { k ->
-                item { KediCard(k, vm, settings.hideVpnData) }
+                item { KediCard(k, vm, settings.hideVpnData, state.kediPings, state.kediPinging) }
             }
         }
         if (!settings.showKedi && !settings.showXray) {
@@ -268,7 +269,13 @@ private fun PingBadge(result: PingResult?, busy: Boolean) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KediCard(k: KediState, vm: PanelViewModel, hide: Boolean) {
+private fun KediCard(
+    k: KediState,
+    vm: PanelViewModel,
+    hide: Boolean,
+    kediPingMap: Map<String, KediPing>,
+    kediPinging: Set<String>,
+) {
     var confirmStop by remember { mutableStateOf(false) }
     var deleteNode by remember { mutableStateOf<KediNode?>(null) }
     var addLinkOpen by remember { mutableStateOf(false) }
@@ -353,16 +360,25 @@ private fun KediCard(k: KediState, vm: PanelViewModel, hide: Boolean) {
             Sparkline(downHist, upHist, Modifier.fillMaxWidth().height(64.dp))
         }
 
-        Text(
-            "Sunucular",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 4.dp, start = 4.dp),
-        )
+        val allBusy = "all" in kediPinging
+        Row(
+            Modifier.fillMaxWidth().padding(top = 4.dp, start = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Sunucular", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { vm.pingKedi(null) }, enabled = !allBusy) {
+                Text(if (allBusy) "Ölçülüyor…" else "⚡ Tümünü test et")
+            }
+        }
         k.nodes.forEach { n ->
             NodeCard(
                 n = n,
                 active = n.section == k.activeSection,
                 hide = hide,
+                ping = kediPingMap[n.section],
+                pinging = allBusy || n.section in kediPinging,
+                onPing = { vm.pingKedi(n.section) },
                 onUse = { vm.useKediNode(n.section, n.name) },
                 onEdit = { vm.openKediNode(n.section) },
                 onToggle = { vm.setKediNodeEnabled(n.section, !n.enabled) },
@@ -526,6 +542,9 @@ private fun NodeCard(
     n: KediNode,
     active: Boolean,
     hide: Boolean,
+    ping: KediPing?,
+    pinging: Boolean,
+    onPing: () -> Unit,
     onUse: () -> Unit,
     onEdit: () -> Unit,
     onToggle: () -> Unit,
@@ -573,6 +592,18 @@ private fun NodeCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = onPing,
+                        enabled = !pinging,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        modifier = Modifier.height(34.dp),
+                    ) { Text("Ping") }
+                    KediPingBadge(ping, pinging)
+                }
             }
             Box {
                 var menu by remember { mutableStateOf(false) }
@@ -588,6 +619,38 @@ private fun NodeCard(
                     )
                     DropdownMenuItem(text = { Text("Sil", color = Bad) }, onClick = { menu = false; onDelete() })
                 }
+            }
+        }
+    }
+}
+
+/**
+ * KediRay panelindeki gibi: ana değer modemden sunucuya ağ gecikmesi (<60 ms yeşil, <150 sarı, üstü kırmızı);
+ * yanında tünelden tam web isteği süresi. Sunucuya ulaşılamazsa "Hata".
+ */
+@Composable
+private fun KediPingBadge(p: KediPing?, busy: Boolean) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when {
+        busy -> Text("…", color = muted, fontWeight = FontWeight.Bold)
+        p == null -> return
+        p.rttMs == null && p.tunnelMs == null -> Text("Hata", color = Bad, fontWeight = FontWeight.Bold)
+        else -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (p.rttMs != null) {
+                Text(
+                    "${p.rttMs} ms",
+                    color = if (p.rttMs < 60) Good else if (p.rttMs < 150) Warn else Bad,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            if (p.tunnelMs != null) {
+                Text(
+                    "tünel ${p.tunnelMs} ms",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (p.rttMs == null) {
+                        if (p.tunnelMs < 150) Good else if (p.tunnelMs < 400) Warn else Bad
+                    } else muted,
+                )
             }
         }
     }

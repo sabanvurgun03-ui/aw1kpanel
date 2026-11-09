@@ -157,34 +157,33 @@ internal fun ProfileEditor(
                     .imePadding()
                     .padding(horizontal = 16.dp),
             ) {
+                Text(
+                    when {
+                        initial.kind == "kediray" -> if (initial.id == null) "Yeni KediRay düğümü" else "KediRay düğümünü düzenle"
+                        initial.id == null -> "Yeni profil"
+                        else -> "Profili düzenle"
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        when {
-                            initial.kind == "kediray" -> if (initial.id == null) "Yeni KediRay düğümü" else "KediRay düğümünü düzenle"
-                            initial.id == null -> "Yeni profil"
-                            else -> "Profili düzenle"
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Row {
-                        TextButton(onClick = onClose) { Text("Vazgeç") }
-                        Button(onClick = {
-                            val finalJson = if (tab == 0) toJson(base, form) else jsonText
-                            try {
-                                JSONObject(finalJson)
-                                error = null
-                                onSave(finalJson)
-                            } catch (e: Exception) {
-                                error = "JSON geçersiz: ${e.message}"
-                            }
-                        }) { Text("Kaydet") }
-                    }
+                    TextButton(onClick = onClose) { Text("Vazgeç") }
+                    Button(onClick = {
+                        val finalJson = if (tab == 0) toJson(base, form) else jsonText
+                        try {
+                            JSONObject(finalJson)
+                            error = null
+                            onSave(finalJson)
+                        } catch (e: Exception) {
+                            error = "JSON geçersiz: ${e.message}"
+                        }
+                    }) { Text("Kaydet") }
                 }
                 Row(
                     Modifier.fillMaxWidth(),

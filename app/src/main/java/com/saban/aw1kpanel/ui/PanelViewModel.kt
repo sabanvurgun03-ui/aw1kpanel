@@ -113,6 +113,9 @@ data class UiState(
     val wifiEditor: WifiDetail? = null,
     val pings: Map<String, PingResult> = emptyMap(),
     val pinging: Set<String> = emptySet(),
+    /** KediRay düğümlerinin son ping sonucu (düğüm bölümü -> sonuç); [kediPinging] ölçülenler, "all" tümünü ölçerken. */
+    val kediPings: Map<String, com.saban.aw1kpanel.data.KediPing> = emptyMap(),
+    val kediPinging: Set<String> = emptySet(),
     val update: UpdateState = UpdateState(),
     val logs: com.saban.aw1kpanel.data.LogData? = null,
     val logsError: String? = null,
@@ -943,6 +946,31 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(message = friendly(e)) }
+            }
+        }
+    }
+
+    /** KediRay düğümlerini ölçer: [section] null ise hepsini ("Tümünü test et"). */
+    fun pingKedi(section: String?) {
+        val key = section ?: "all"
+        if (key in _state.value.kediPinging || "all" in _state.value.kediPinging) return
+        viewModelScope.launch {
+            _state.update { it.copy(kediPinging = it.kediPinging + key) }
+            try {
+                val res = repo.kediPing(section)
+                _state.update { it.copy(kediPings = it.kediPings + res) }
+                if (section != null && section !in res) {
+                    _state.update { it.copy(kediPings = it.kediPings + (section to com.saban.aw1kpanel.data.KediPing(null, null))) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update {
+                    val failed = if (section != null) it.kediPings + (section to com.saban.aw1kpanel.data.KediPing(null, null)) else it.kediPings
+                    it.copy(kediPings = failed, message = friendly(e))
+                }
+            } finally {
+                _state.update { it.copy(kediPinging = it.kediPinging - key) }
             }
         }
     }

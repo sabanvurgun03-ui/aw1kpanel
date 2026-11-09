@@ -150,6 +150,12 @@ data class WifiDetail(
 /** VPN profili ping sonucu; [ms] null ise başarısız. */
 data class PingResult(val ms: Int?)
 
+/**
+ * KediRay düğümü ölçümü (`kediray ping`): [tunnelMs] tünelden tam web isteği (ölçüm adresi; null/eksi = ulaşılamadı),
+ * [rttMs] modemden sunucuya TCP bağlantı süresi (null = ölçülemedi).
+ */
+data class KediPing(val tunnelMs: Int?, val rttMs: Int?)
+
 data class KediNode(
     val section: String,
     val name: String,

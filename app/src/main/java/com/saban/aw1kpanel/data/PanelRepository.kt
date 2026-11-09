@@ -1086,6 +1086,35 @@ class PanelRepository(private val client: UbusClient) {
         return out
     }
 
+    /**
+     * KediRay'in kendi ölçümü (`kediray ping <sunucu|all> --json`): modemin ölçüm adresi (Ayarlar > Ölçüm adresi,
+     * yedek: Cloudflare cp.cloudflare.com) üzerinden tünel gecikmesi + sunucuya TCP gecikmesi.
+     * [section] null ise tüm sunucular ölçülür. Dönen harita yalnızca ölçülen düğümleri içerir.
+     */
+    suspend fun kediPing(section: String?): Map<String, KediPing> {
+        val r = fileExec("/usr/bin/kediray", "ping", section ?: "all", "--json")
+        val out = r.optString("stdout").trim()
+        val start = out.indexOf('[')
+        if (start < 0) {
+            throw UbusException(r.optString("stderr").trim().ifEmpty { "Ping sonucu alınamadı" })
+        }
+        val arr = JSONArray(out.substring(start))
+        val res = linkedMapOf<String, KediPing>()
+        for (i in 0 until arr.length()) {
+            val n = arr.optJSONObject(i) ?: continue
+            val sec = n.optString("sec")
+            if (sec.isEmpty() || (section != null && sec != section)) continue
+            val tunnel = if (n.has("ping") && !n.isNull("ping")) n.optInt("ping", -1) else null
+            val rtt = if (n.has("rtt") && !n.isNull("rtt")) n.optInt("rtt", -1) else null
+            if (tunnel == null && rtt == null) continue   // bu düğüm ölçülmedi (ör. kapalı düğüm)
+            res[sec] = KediPing(
+                tunnelMs = tunnel?.takeIf { it > 0 },
+                rttMs = rtt?.takeIf { it > 0 },
+            )
+        }
+        return res
+    }
+
     suspend fun kediSetNodeEnabled(section: String, on: Boolean) {
         kediCli("node-enable", section, if (on) "1" else "0")
     }
