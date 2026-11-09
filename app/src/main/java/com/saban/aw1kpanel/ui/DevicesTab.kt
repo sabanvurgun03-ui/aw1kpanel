@@ -90,8 +90,8 @@ private fun LiveBox(client: com.saban.aw1kpanel.data.WifiClient?, rate: Pair<Flo
         Spacer(Modifier.height(6.dp))
         if (client != null) {
             val sig = when {
-                client.signal >= -65 -> Good
-                client.signal >= -75 -> Warn
+                client.signal >= -67 -> Good
+                client.signal >= -80 -> Warn
                 else -> Bad
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

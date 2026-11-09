@@ -299,9 +299,10 @@ private fun fmtBytes(b: Long): String = when {
 
 private fun signalLevel(dbm: Int): Int = when {
     dbm == 0 -> 0
+    // MetaGeek/Oscium ölçeği: -67 çok iyi (görüntülü/ses), -70 iyi, -80 altı zayıf.
     dbm >= -55 -> 4
-    dbm >= -65 -> 3
-    dbm >= -75 -> 2
+    dbm >= -67 -> 3
+    dbm >= -80 -> 2
     else -> 1
 }
 
