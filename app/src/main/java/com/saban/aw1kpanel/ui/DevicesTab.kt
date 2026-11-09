@@ -257,7 +257,7 @@ internal fun DevicesTab(state: UiState, settings: AppSettings, vm: PanelViewMode
                 Spacer(Modifier.height(8.dp))
                 Text("İnternet yönü", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("vpn" to "VPN", "direct" to "Direkt", "block" to "İnternet kapalı").forEach { (m, label) ->
+                    listOf("vpn" to "VPN", "direct" to "Direkt", "block" to "İnternetsiz").forEach { (m, label) ->
                         FilterChip(
                             selected = d.mode == m,
                             onClick = { if (d.mode != m) vm.setDeviceMode(d, m) },
@@ -302,7 +302,7 @@ internal fun DevicesTab(state: UiState, settings: AppSettings, vm: PanelViewMode
                 Text(
                     "\"${d.hostname.ifEmpty { "Cihaz" }}\" Wi-Fi ağlarına bağlanamaz hale gelir. " +
                         "Wi-Fi birkaç saniye yeniden başlar ve bağlı herkesin bağlantısı kısa süre kesilir. " +
-                        "Kablolu cihazlar bu yöntemle engellenemez; onlar için İnternet yönünü \"İnternet kapalı\" yap.",
+                        "Kablolu cihazlar bu yöntemle engellenemez; onlar için İnternet yönünü \"İnternetsiz\" yap.",
                 )
             },
             confirmButton = {
