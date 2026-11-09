@@ -79,12 +79,12 @@ internal fun WifiTab(state: UiState, settings: AppSettings, vm: PanelViewModel) 
     var expanded by remember { mutableStateOf(setOf<String>()) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // Sayfa görünürken istemci sayaçlarını 3 sn'de bir okuyup anlık hızı hesapla (Cihaz sayfasıyla aynı).
+    // Sayfa görünürken istemci sayaçlarını saniyede bir okuyup anlık hızı hesapla (Cihaz sayfasıyla aynı).
     androidx.compose.runtime.LaunchedEffect(owner) {
         owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
             while (true) {
                 vm.refreshWifiClients()
-                kotlinx.coroutines.delay(3000)
+                kotlinx.coroutines.delay(1000)
             }
         }
     }

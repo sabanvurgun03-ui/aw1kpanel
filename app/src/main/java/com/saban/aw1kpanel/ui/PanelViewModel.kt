@@ -546,7 +546,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             val prev = rateSamples[key]
             if (prev != null) {
                 val dt = (now - prev.third) / 1000f
-                if (dt >= 1f) {
+                if (dt >= 0.5f) {
                     val down = (cl.txBytes - prev.first).coerceAtLeast(0L) / dt
                     val up = (cl.rxBytes - prev.second).coerceAtLeast(0L) / dt
                     rates[key] = down to up

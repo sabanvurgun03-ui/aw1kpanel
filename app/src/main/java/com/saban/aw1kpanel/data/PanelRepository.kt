@@ -473,6 +473,9 @@ class PanelRepository(private val client: UbusClient) {
     }
 
     /** Wi-Fi'ye bağlı istemciler (aw1k eklentisi: hostapd + bağlanma zamanı takibi). */
+    /** `iw station dump` sinyal vermediyse bir sonraki deneme zamanı (ms). */
+    private var iwRetryAt = 0L
+
     suspend fun wifiClients(networks: List<WifiNetwork>): List<WifiClient> {
         val o = client.call("aw1k", "wifi_clients")
         val now = o.optLong("now")
@@ -533,7 +536,8 @@ class PanelRepository(private val client: UbusClient) {
             }
         }
         // Sinyal hâlâ bilinmiyorsa (0) Wi-Fi sürücüsünden oku: `iw dev <arayüz> station dump`
-        if (out.any { it.signal == 0 }) {
+        val nowMs = System.currentTimeMillis()
+        if (out.any { it.signal == 0 } && nowMs >= iwRetryAt) {
             val bySection = mutableMapOf<String, String>()
             for (i in 0 until ifaces.length()) {
                 val nm = ifaces.getJSONObject(i).optString("name")
@@ -558,6 +562,8 @@ class PanelRepository(private val client: UbusClient) {
                     }
                 }
             }
+            // Sürücü sinyal vermiyorsa her ölçümde boşuna sorma: 10 dk sonra yeniden dene
+            if (sig.isEmpty()) iwRetryAt = nowMs + 10 * 60_000L
             if (sig.isNotEmpty()) {
                 for (i in out.indices) {
                     val c = out[i]
