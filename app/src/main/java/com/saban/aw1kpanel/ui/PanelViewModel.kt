@@ -129,6 +129,8 @@ data class UiState(
     val sms: List<com.saban.aw1kpanel.data.SmsMessage>? = null,
     val smsError: String? = null,
     val smsBusy: Boolean = false,
+    val smsFilter: com.saban.aw1kpanel.data.SmsFilterState? = null,
+    val smsRun: com.saban.aw1kpanel.data.SmsRunResult? = null,
     val message: String? = null,
 )
 
@@ -184,6 +186,72 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshSms() {
         viewModelScope.launch { loadSms() }
+    }
+
+    suspend fun loadSmsFilter() {
+        try {
+            val f = repo.smsFilter()
+            _state.update { it.copy(smsFilter = f) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Eski KediRay (filtre yok): sessizce geç, filtre kartı "KediRay'i güncelle" der
+        }
+    }
+
+    /** Kuralları hemen ekranda güncelle, modeme yaz; olmazsa eski hâline döndür. */
+    fun saveSmsRules(rules: com.saban.aw1kpanel.data.SmsRules) {
+        viewModelScope.launch {
+            val before = _state.value.smsFilter
+            _state.update { st -> st.copy(smsFilter = (st.smsFilter ?: com.saban.aw1kpanel.data.SmsFilterState(rules, emptyList(), true)).copy(rules = rules)) }
+            try {
+                repo.smsSaveRules(rules)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(smsFilter = before, message = "Kural kaydedilemedi: " + friendly(e)) }
+            }
+        }
+    }
+
+    fun runSmsFilter(apply: Boolean) {
+        viewModelScope.launch {
+            _state.update { it.copy(smsBusy = true) }
+            try {
+                val r = repo.smsFilterRun(apply)
+                val msg = when {
+                    !r.ok -> "Filtre hatası: " + (r.error ?: "bilinmiyor")
+                    r.skipped != null -> "Filtre kapalı; önce açmalısın"
+                    apply -> "${r.deleted} mesaj silindi" + if (r.blocked.isNotEmpty()) ", ${r.blocked.size} gönderen engellendi" else ""
+                    else -> if (r.matched.isEmpty()) "Silinecek mesaj yok" else "${r.matched.size} mesaj silinecek (deneme, silinmedi)"
+                }
+                _state.update { it.copy(smsRun = if (apply) null else r, message = msg) }
+                if (apply) {
+                    loadSms()
+                    loadSmsFilter()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(message = "Filtre çalışmadı: " + friendly(e)) }
+            } finally {
+                _state.update { it.copy(smsBusy = false) }
+            }
+        }
+    }
+
+    fun dismissSmsRun() {
+        _state.update { it.copy(smsRun = null) }
+    }
+
+    /** Göndericiyi engelli listeye ekler ve bu mesajı siler. */
+    fun blockSmsSender(sender: String, indexes: List<Int>) {
+        val cur = _state.value.smsFilter?.rules ?: com.saban.aw1kpanel.data.SmsRules()
+        val s = com.saban.aw1kpanel.data.SmsMatcher.fold(sender)
+        if (cur.blocked.none { com.saban.aw1kpanel.data.SmsMatcher.fold(it) == s }) {
+            saveSmsRules(cur.copy(blocked = cur.blocked + sender))
+        }
+        deleteSms(indexes)
     }
 
     fun sendSms(number: String, text: String, onDone: () -> Unit = {}) {
@@ -1356,6 +1424,11 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             com.saban.aw1kpanel.data.UsageCounter.pingIfDue(settingsStore, APP_VERSION)
         }
+    }
+
+    fun setSmsAlert(on: Boolean) {
+        settingsStore.setSmsAlert(on)
+        _settings.update { it.copy(smsAlert = on) }
     }
 
     fun setVpnAlert(on: Boolean) {

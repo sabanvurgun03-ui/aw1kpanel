@@ -9,6 +9,8 @@ data class AppSettings(
     val themeId: String = "",
     val customThemes: List<ThemeDef> = emptyList(),
     val vpnAlert: Boolean = false,
+    /** Yeni SMS gelince bildirim (arka plan servisi modemi yoklar). */
+    val smsAlert: Boolean = false,
     /** VPN sayfasında hangi bölümler görünsün. */
     val showXray: Boolean = true,
     val showKedi: Boolean = true,
@@ -36,6 +38,7 @@ class SettingsStore(context: Context) {
         themeId = prefs.getString("theme_id", "") ?: "",
         customThemes = themesFromJson(prefs.getString("custom_themes", null)),
         vpnAlert = prefs.getBoolean("vpn_alert", false),
+        smsAlert = prefs.getBoolean("sms_alert", false),
         showXray = prefs.getBoolean("show_xray", true),
         showKedi = prefs.getBoolean("show_kedi", true),
         hideDeviceData = prefs.getBoolean("hide_device_data", true),
@@ -76,6 +79,16 @@ class SettingsStore(context: Context) {
     fun saveCustomThemes(list: List<ThemeDef>) {
         prefs.edit().putString("custom_themes", themesToJson(list)).apply()
     }
+
+    fun setSmsAlert(on: Boolean) {
+        // Açılırken mevcut mesajlar için bildirim yağmasın: son görülen zamanı sıfırla, ilk yoklamada güncellenir
+        prefs.edit().putBoolean("sms_alert", on).putLong("sms_last_ts", 0L).apply()
+    }
+
+    /** En son bildirilen SMS'in zamanı (sn); 0 = henüz yoklanmadı. */
+    var smsLastTs: Long
+        get() = prefs.getLong("sms_last_ts", 0L)
+        set(v) { prefs.edit().putLong("sms_last_ts", v).apply() }
 
     fun setVpnAlert(on: Boolean) {
         prefs.edit().putBoolean("vpn_alert", on).apply()

@@ -279,3 +279,62 @@ data class SysDetails(
 
 /** Gelen kutusundaki bir SMS. Uzun mesajlar parçalı gelir; aynı gönderen ve saatteki parçalar birleştirilir ([indexes] hepsini tutar). */
 data class SmsMessage(val indexes: List<Int>, val sender: String, val timestamp: Long, val text: String)
+
+/** SMS spam filtresi kuralları (modemde /etc/aw1k-sms.json). */
+data class SmsRules(
+    val enabled: Boolean = false,
+    /** Kelimeyle yakalanan mesajın göndericisi de engellenir. */
+    val autoBlock: Boolean = true,
+    val keywords: List<String> = emptyList(),
+    val blocked: List<String> = emptyList(),
+    /** Bu göndericilerin mesajına hiç dokunulmaz. */
+    val allow: List<String> = emptyList(),
+)
+
+/** Filtrenin sildiği bir mesajın kaydı (modemin belleğinde, son 50). */
+data class SmsFilterLogEntry(val time: Long, val sender: String, val reason: String, val text: String)
+
+data class SmsFilterState(val rules: SmsRules, val log: List<SmsFilterLogEntry>, val ucode: Boolean)
+
+data class SmsFilterHit(val sender: String, val reason: String, val text: String, val timestamp: Long)
+
+/** `aw1k-smsfilter --dry|--run` sonucu. */
+data class SmsRunResult(
+    val ok: Boolean,
+    val dry: Boolean,
+    val skipped: String?,
+    val scanned: Int,
+    val deleted: Int,
+    val blocked: List<String>,
+    val matched: List<SmsFilterHit>,
+    val error: String?,
+)
+
+/** Modemdeki aw1k-smsfilter ile aynı eşleştirme: büyük/küçük harf ve Türkçe harf farkı yok. */
+object SmsMatcher {
+    private val tr = mapOf(
+        'ı' to 'i', 'İ' to 'i', 'ş' to 's', 'Ş' to 's', 'ğ' to 'g', 'Ğ' to 'g',
+        'ü' to 'u', 'Ü' to 'u', 'ö' to 'o', 'Ö' to 'o', 'ç' to 'c', 'Ç' to 'c',
+    )
+    private val spaces = Regex("\\s+")
+
+    fun fold(s: String): String {
+        val b = StringBuilder(s.length)
+        for (c in s) b.append(tr[c] ?: c)
+        return b.toString().lowercase(java.util.Locale.ROOT).replace(spaces, " ").trim()
+    }
+
+    /** Filtre açıkken bu mesaj silinecek mi? Silinecekse nedeni, değilse null. */
+    fun reason(rules: SmsRules, sender: String, text: String): String? {
+        if (!rules.enabled) return null
+        val s = fold(sender)
+        if (rules.allow.any { fold(it) == s }) return null
+        if (rules.blocked.any { fold(it) == s }) return "engelli gönderen"
+        val t = fold(text)
+        for (k in rules.keywords) {
+            val kw = fold(k)
+            if (kw.length >= 3 && t.contains(kw)) return "kelime: $k"
+        }
+        return null
+    }
+}

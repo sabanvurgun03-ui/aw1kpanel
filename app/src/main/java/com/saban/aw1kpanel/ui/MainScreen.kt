@@ -954,12 +954,15 @@ private fun formatUptime(seconds: Long): String {
 @Composable
 private fun SettingsTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     val context = LocalContext.current
+    var pendingSms by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
-            vm.setVpnAlert(true)
+            if (pendingSms) vm.setSmsAlert(true) else vm.setVpnAlert(true)
+            pendingSms = false
         } else {
+            pendingSms = false
             vm.showMessage("Bildirim izni verilmediği için uyarı açılamadı")
         }
     }
@@ -1002,7 +1005,28 @@ private fun SettingsTab(state: UiState, settings: AppSettings, vm: PanelViewMode
                                 context,
                                 Manifest.permission.POST_NOTIFICATIONS,
                             ) != PackageManager.PERMISSION_GRANTED
-                        if (needsPermission) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.setVpnAlert(on)
+                        if (needsPermission) {
+                            pendingSms = false
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else vm.setVpnAlert(on)
+                    },
+                )
+                KDivider()
+                KSwitchRow(
+                    "Yeni SMS bildirimi",
+                    "SIM'e SMS gelince bildirim gönderir (istenmeyen filtresine uyanlar hariç). Telefon modemin Wi-Fi ağındayken çalışır.",
+                    settings.smsAlert,
+                    { on ->
+                        val needsPermission = on &&
+                            Build.VERSION.SDK_INT >= 33 &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        if (needsPermission) {
+                            pendingSms = true
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else vm.setSmsAlert(on)
                     },
                 )
                 KDivider()

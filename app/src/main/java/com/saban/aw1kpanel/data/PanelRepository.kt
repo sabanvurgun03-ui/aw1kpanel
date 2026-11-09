@@ -838,6 +838,58 @@ class PanelRepository(private val client: UbusClient) {
         )
     }
 
+    // ---- SMS spam filtresi (modemdeki aw1k-smsfilter) ----------------------
+
+    suspend fun smsFilter(): SmsFilterState {
+        val o = client.call("aw1k", "sms_rules")
+        val r = o.optJSONObject("rules") ?: JSONObject()
+        fun list(k: String): List<String> = r.optJSONArray(k)?.let { a ->
+            (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+        } ?: emptyList()
+        val log = o.optJSONArray("log")?.let { a ->
+            (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map {
+                SmsFilterLogEntry(it.optLong("t"), it.optString("sender"), it.optString("reason"), it.optString("text"))
+            }
+        } ?: emptyList()
+        return SmsFilterState(
+            SmsRules(r.optBoolean("enabled"), r.optBoolean("auto_block", true), list("keywords"), list("blocked"), list("allow")),
+            log,
+            o.optBoolean("ucode", true),
+        )
+    }
+
+    suspend fun smsSaveRules(r: SmsRules) {
+        val j = JSONObject()
+            .put("enabled", r.enabled)
+            .put("auto_block", r.autoBlock)
+            .put("keywords", JSONArray(r.keywords))
+            .put("blocked", JSONArray(r.blocked))
+            .put("allow", JSONArray(r.allow))
+        val res = client.call("aw1k", "sms_rules_set", JSONObject().put("rules", j.toString()))
+        if (!res.optBoolean("ok")) throw UbusException(res.optString("error").ifEmpty { "Kurallar kaydedilemedi" })
+    }
+
+    /** [apply] false: deneme (hiçbir şey silinmez); true: kurallar açıksa şimdi uygular. */
+    suspend fun smsFilterRun(apply: Boolean): SmsRunResult {
+        val o = client.call("aw1k", "sms_filter_run", JSONObject().put("mode", if (apply) "run" else "dry"))
+        fun strs(k: String): List<String> = o.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+        val hits = o.optJSONArray("matched")?.let { a ->
+            (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map {
+                SmsFilterHit(it.optString("sender"), it.optString("reason"), it.optString("text"), it.optLong("timestamp"))
+            }
+        } ?: emptyList()
+        return SmsRunResult(
+            ok = o.optBoolean("ok"),
+            dry = o.optBoolean("dry"),
+            skipped = o.optString("skipped").takeIf { it.isNotEmpty() },
+            scanned = o.optInt("scanned"),
+            deleted = o.optInt("deleted"),
+            blocked = strs("blocked"),
+            matched = hits,
+            error = o.optString("error").takeIf { it.isNotEmpty() },
+        )
+    }
+
     /** KediRay cihaz yönünü değiştirir (vpn | direct | block). */
     suspend fun setDeviceMode(mac: String, mode: String, name: String) {
         val r = client.call(

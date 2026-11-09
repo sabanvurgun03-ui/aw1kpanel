@@ -61,12 +61,13 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            // VPN uyarısı açıksa izleme servisini çalışır tut, kapalıysa durdur.
-            LaunchedEffect(settings.vpnAlert, state.loggedIn) {
+            // VPN ya da SMS uyarısı açıksa izleme servisini çalışır tut, ikisi de kapalıysa durdur.
+            LaunchedEffect(settings.vpnAlert, settings.smsAlert, state.loggedIn) {
                 val intent = Intent(this@MainActivity, VpnWatchService::class.java)
-                if (settings.vpnAlert && state.loggedIn) {
+                val wanted = settings.vpnAlert || settings.smsAlert
+                if (wanted && state.loggedIn) {
                     startForegroundService(intent)
-                } else if (!settings.vpnAlert) {
+                } else if (!wanted) {
                     stopService(intent)
                 }
             }

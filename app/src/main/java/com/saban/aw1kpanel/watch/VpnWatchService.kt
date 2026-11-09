@@ -14,6 +14,9 @@ import com.saban.aw1kpanel.data.Connection
 import com.saban.aw1kpanel.data.CredentialStore
 import com.saban.aw1kpanel.data.PanelRepository
 import com.saban.aw1kpanel.data.SettingsStore
+import com.saban.aw1kpanel.data.SmsMatcher
+import com.saban.aw1kpanel.data.SmsMessage
+import com.saban.aw1kpanel.data.SmsRules
 import com.saban.aw1kpanel.data.UbusClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,8 +30,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * VPN bağlıyken kopmasını izleyen ön plan servisi.
+ * VPN bağlıyken kopmasını izleyen ve yeni SMS gelince bildirim veren ön plan servisi.
  * Modemin xwrt durumunu 20 saniyede bir sorar; üst üste iki kez "bağlı değil" görürse uyarı verir.
+ * SMS bildirimi açıksa SIM'i yaklaşık dakikada bir yoklar; spam filtresine uyan mesajlar bildirilmez.
  * Telefon modemin ağında değilse sessizce yeniden dener.
  */
 class VpnWatchService : Service() {
@@ -69,10 +73,12 @@ class VpnWatchService : Service() {
         var downPolls = 0
         var alerted = false
         var current: Connection? = null
+        var lastSms = 0L
 
         while (currentCoroutineContext().isActive) {
             val conn = creds.load()
-            if (conn == null || !settings.load().vpnAlert) {
+            val conf = settings.load()
+            if (conn == null || !(conf.vpnAlert || conf.smsAlert)) {
                 stopSelf()
                 return
             }
@@ -90,7 +96,7 @@ class VpnWatchService : Service() {
                     repo.login(conn)
                     loggedIn = true
                 }
-                val vpn = repo.vpnState()
+                val vpn = if (conf.vpnAlert) repo.vpnState() else null
                 if (vpn != null) {
                     if (vpn.connected) {
                         if (alerted) {
@@ -112,6 +118,11 @@ class VpnWatchService : Service() {
                     }
                     update(if (vpn.connected) "VPN bağlı · ${vpn.profileName}" else "VPN bağlı değil")
                 }
+                if (!conf.vpnAlert) update("Yeni SMS izleniyor")
+                if (conf.smsAlert && System.currentTimeMillis() - lastSms >= 45_000L) {
+                    lastSms = System.currentTimeMillis()
+                    checkSms(repo, settings)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -123,6 +134,41 @@ class VpnWatchService : Service() {
         }
     }
 
+    /** SIM'e son yoklamadan beri gelen mesajları bildirir (spam filtresine uyanlar hariç). İlk yoklama yalnızca başlangıç noktasını kaydeder. */
+    private suspend fun checkSms(repo: PanelRepository, settings: SettingsStore) {
+        try {
+            val inbox = repo.smsInbox()
+            val last = settings.smsLastTs
+            if (last == 0L) {
+                settings.smsLastTs = inbox.maxOfOrNull { it.timestamp } ?: 1L
+                return
+            }
+            val fresh = inbox.filter { it.timestamp > last }.sortedBy { it.timestamp }
+            if (fresh.isEmpty()) return
+            val rules = try { repo.smsFilter().rules } catch (e: CancellationException) { throw e } catch (e: Exception) { SmsRules() }
+            for (m in fresh) {
+                if (SmsMatcher.reason(rules, m.sender, m.text) == null) notifySms(m)
+            }
+            settings.smsLastTs = fresh.maxOf { it.timestamp }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // qmodem yok ya da modem meşgul: bir sonraki yoklamada tekrar denenir
+        }
+    }
+
+    private fun notifySms(m: SmsMessage) {
+        val n = Notification.Builder(this, CH_SMS)
+            .setSmallIcon(android.R.drawable.ic_dialog_email)
+            .setContentTitle(m.sender.ifEmpty { "Yeni SMS" })
+            .setContentText(m.text)
+            .setStyle(Notification.BigTextStyle().bigText(m.text))
+            .setAutoCancel(true)
+            .setContentIntent(openApp())
+            .build()
+        getSystemService(NotificationManager::class.java).notify(SMS_ID_BASE + (m.timestamp % 1_000_000L).toInt(), n)
+    }
+
     // ---- Bildirimler ----------------------------------------------------
 
     private fun createChannels() {
@@ -132,6 +178,9 @@ class VpnWatchService : Service() {
         )
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERT, "VPN uyarıları", NotificationManager.IMPORTANCE_HIGH),
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_SMS, "Yeni SMS", NotificationManager.IMPORTANCE_HIGH),
         )
     }
 
@@ -181,8 +230,10 @@ class VpnWatchService : Service() {
     private companion object {
         const val CH_WATCH = "vpn_watch"
         const val CH_ALERT = "vpn_alert"
+        const val CH_SMS = "sms"
         const val ONGOING_ID = 1
         const val ALERT_ID = 2
         const val RECOVERED_ID = 3
+        const val SMS_ID_BASE = 1000
     }
 }
