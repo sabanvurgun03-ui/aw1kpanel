@@ -427,7 +427,7 @@ private fun ListRow(o: KOpt, value: String, nodes: List<KediNode>, onChange: (An
     } else o.choices
     val label = choices.firstOrNull { it.value == value }?.label ?: value.ifEmpty { "—" }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { open = true },
+        Modifier.fillMaxWidth().clickable { open = true },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

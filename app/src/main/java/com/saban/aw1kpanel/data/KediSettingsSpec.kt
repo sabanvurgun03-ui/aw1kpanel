@@ -99,7 +99,7 @@ object KediSettingsSpec {
                 KOpt(
                     "lan", "LAN arayüzleri", KOptType.DYNLIST,
                     "Trafiği yakalanacak ağlar (misafir ağı eklemek için guest yaz).",
-                    default = "lan", placeholder = "lan",
+                    default = "lan", placeholder = "örn. guest",
                 ),
                 KOpt(
                     "update_check", "Güncellemeleri kontrol et", KOptType.FLAG,
