@@ -148,7 +148,7 @@ private fun DeviceStat(label: String, count: Int, modifier: Modifier = Modifier)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun DevicesTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     var revealed by remember { mutableStateOf(setOf<String>()) }
@@ -255,21 +255,40 @@ internal fun DevicesTab(state: UiState, settings: AppSettings, vm: PanelViewMode
                     todayBytes = state.shares?.devices?.firstOrNull { it.ip == d.ip }?.bytes,
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Yön:", style = MaterialTheme.typography.bodySmall)
-                    listOf("vpn" to "VPN", "direct" to "Direkt", "block" to "Engelle").forEach { (m, label) ->
+                Text("İnternet yönü", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("vpn" to "VPN", "direct" to "Direkt", "block" to "İnternet kapalı").forEach { (m, label) ->
                         FilterChip(
                             selected = d.mode == m,
                             onClick = { if (d.mode != m) vm.setDeviceMode(d, m) },
-                            label = { Text(label) },
+                            label = { Text(label, maxLines = 1) },
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Text(
+                    when (d.mode) {
+                        "direct" -> "İnternete VPN'siz, kendi hattından çıkar."
+                        "block" -> "Wi-Fi'ye bağlı kalır ama internete çıkamaz."
+                        else -> "İnternete VPN sunucusu üzerinden çıkar."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
                 if (blocked) {
-                    OutlinedButton(onClick = { vm.blockDevice(d, false) }) { Text("Engeli kaldır") }
+                    OutlinedButton(onClick = { vm.blockDevice(d, false) }) { Text("Wi-Fi'ye tekrar izin ver") }
+                    Text(
+                        "Bu cihaz Wi-Fi'ye bağlanamıyor.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Bad,
+                    )
                 } else {
-                    OutlinedButton(onClick = { blockTarget = d }, colors = ButtonDefaults.outlinedButtonColors(contentColor = Bad)) { Text("Engelle") }
+                    OutlinedButton(onClick = { blockTarget = d }, colors = ButtonDefaults.outlinedButtonColors(contentColor = Bad)) { Text("Wi-Fi'den engelle") }
+                    Text(
+                        "Cihaz Wi-Fi ağına hiç bağlanamaz.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -278,12 +297,12 @@ internal fun DevicesTab(state: UiState, settings: AppSettings, vm: PanelViewMode
     blockTarget?.let { d ->
         AlertDialog(
             onDismissRequest = { blockTarget = null },
-            title = { Text("Cihaz engellensin mi?") },
+            title = { Text("Wi-Fi'den engellensin mi?") },
             text = {
                 Text(
                     "\"${d.hostname.ifEmpty { "Cihaz" }}\" Wi-Fi ağlarına bağlanamaz hale gelir. " +
                         "Wi-Fi birkaç saniye yeniden başlar ve bağlı herkesin bağlantısı kısa süre kesilir. " +
-                        "Kablolu cihazlar bu yöntemle engellenemez.",
+                        "Kablolu cihazlar bu yöntemle engellenemez; onlar için İnternet yönünü \"İnternet kapalı\" yap.",
                 )
             },
             confirmButton = {
