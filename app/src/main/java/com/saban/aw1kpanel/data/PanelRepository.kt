@@ -830,14 +830,15 @@ class PanelRepository(private val client: UbusClient) {
         }
     }
 
+    /** SIM'den siler. qmodem'in delete_sms'i AW1000'de silmediği için modemdeki aw1k-smsdel (sms_tool) kullanılır. */
     suspend fun smsDelete(indexes: List<Int>) {
         if (indexes.isEmpty()) return
-        val r = client.call(
-            "qmodem", "delete_sms",
-            JSONObject().put("config_section", smsSection()).put("index", indexes.joinToString(" ")),
-        )
-        // qmodem her numara için "status" yazar: "1" başarılı, "0" modem silmeyi reddetti
-        if (r.optString("status") == "0") throw UbusException("Modem silme komutunu reddetti (status 0)")
+        val r = try {
+            client.call("aw1k", "sms_delete", JSONObject().put("index", indexes.joinToString(" ")))
+        } catch (e: UbusException) {
+            throw UbusException("Silmek için modemde KediRay'i 1.19.96 ya da yenisine güncelle (${e.message})")
+        }
+        if (!r.optBoolean("ok")) throw UbusException(r.optString("error").ifEmpty { "Modem mesajı silmedi" })
     }
 
     // ---- SMS spam filtresi (modemdeki aw1k-smsfilter) ----------------------
