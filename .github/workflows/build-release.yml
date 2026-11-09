@@ -50,7 +50,7 @@ jobs:
       - name: İmzayı doğrula
         run: |
           SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          APK_FP=$("$SIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | awk -F': ' '/SHA-256 digest/ { print toupper($2); exit }')
+          APK_FP=$("$SIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | awk '/SHA-256 digest/ { print toupper($NF); exit }')
           echo "APK SHA-256: $APK_FP"
           if [ "$APK_FP" != "$KEY_FP" ]; then
             echo "::error::APK senin anahtarınla imzalanmamış; yayınlanmıyor."
