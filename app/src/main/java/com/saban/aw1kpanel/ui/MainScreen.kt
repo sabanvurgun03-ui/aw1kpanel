@@ -392,7 +392,7 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
                     label = "sayfa",
                 ) { p ->
                     when (p) {
-                        0 -> HomeTab(state, vm)
+                        0 -> HomeTab(state, vm) { page = 5 }
                         1 -> WifiTab(state, settings, vm)
                         2 -> NetworkTab(
                             state.modem, state.vpn, state.vpnProfileId != null,
@@ -417,39 +417,14 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
 // ---- Ana sayfa -----------------------------------------------------------
 
 @Composable
-private fun HomeTab(state: UiState, vm: PanelViewModel) {
+private fun HomeTab(state: UiState, vm: PanelViewModel, onOpenVpn: () -> Unit) {
     LazyColumn(
         contentPadding = PaddingValues(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { HeaderCard(state.modem, state.modemError) }
-        item { SystemStrip(state.system) }
-        item {
-            val v = state.vpn
-            SectionCard {
-                Text(
-                    "VPN" + (v?.provider?.let { " · $it" } ?: ""),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(4.dp))
-                if (v == null) {
-                    Text("Durum okunamadı", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text(
-                        if (v.connected) "Bağlı · ${v.profileName}" else "Bağlı değil",
-                        color = if (v.connected) Good else Bad,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    if (v.connected) {
-                        Text(
-                            "Süre ${formatUptime(v.uptimeSeconds)} · ↑ ${formatRate(v.uplinkRate)} · ↓ ${formatRate(v.downlinkRate)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
+        item { HomeModemCard(state.modem, state.modemError) }
+        item { HomeSystemCard(state.system) }
+        item { HomeVpnCard(state, vm, onOpenVpn) }
     }
 }
 
