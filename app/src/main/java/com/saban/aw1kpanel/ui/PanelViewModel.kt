@@ -84,6 +84,7 @@ data class UiState(
     val activeRouterId: String? = null,
     val modem: ModemState = ModemState(),
     val modemError: String? = null,
+    val linkAction: String? = null,
     val system: SystemState? = null,
     val modemdata: List<ModemdataGroup> = emptyList(),
     val modemdataError: String? = null,
@@ -932,11 +933,29 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Yeniden bağlan/başlat sonrası, bağlantı geri gelene (veya süre dolana) kadar durum yazısını tutar. */
+    private fun watchLink(minMs: Long, maxMs: Long) {
+        viewModelScope.launch {
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            var sawDown = false
+            while (true) {
+                delay(1000)
+                val el = android.os.SystemClock.elapsedRealtime() - t0
+                val st = _state.value
+                val up = st.modem.connected && st.modemError == null
+                if (!up) sawDown = true
+                if (el >= maxMs || (el >= minMs && up && sawDown) || (el >= maxMs / 3 && up && maxMs <= 60_000)) break
+            }
+            _state.update { it.copy(linkAction = null) }
+        }
+    }
+
     fun redial() {
         viewModelScope.launch {
             try {
                 repo.redial()
-                _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi") }
+                _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi", linkAction = "Yeniden bağlanıyor…") }
+                watchLink(minMs = 6_000, maxMs = 45_000)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -950,8 +969,9 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 repo.reboot()
                 _state.update {
-                    it.copy(message = "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır")
+                    it.copy(message = "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır", linkAction = "Modem yeniden başlatılıyor…")
                 }
+                watchLink(minMs = 15_000, maxMs = 300_000)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

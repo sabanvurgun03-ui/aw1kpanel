@@ -411,7 +411,7 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
                         1 -> WifiTab(state, settings, vm)
                         2 -> NetworkTab(
                             state.modem, state.netDetails, state.vpn, state.vpnProfileId != null,
-                            vm::setVpn, vm::redial, vm::rebootRouter,
+                            vm::setVpn, vm::redial, vm::rebootRouter, state.linkAction,
                         )
                         3 -> BandLockTab(state, settings, vm)
                         4 -> DevicesTab(state, settings, vm)
@@ -637,6 +637,7 @@ private fun NetworkTab(
     onVpnToggle: (Boolean) -> Unit,
     onRedial: () -> Unit,
     onReboot: () -> Unit,
+    linkAction: String? = null,
 ) {
     var confirmReboot by remember { mutableStateOf(false) }
     var confirmRedial by remember { mutableStateOf(false) }
@@ -688,10 +689,10 @@ private fun NetworkTab(
                             color = Color.White.copy(alpha = 0.8f),
                         )
                         Text(
-                            if (modem.connected) "Bağlandı" else "Bağlı değil",
+                            linkAction ?: if (modem.connected) "Bağlandı" else "Bağlı değil",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = if (modem.connected) Color(0xFF86EFAC) else Color(0xFFFCA5A5),
+                            color = if (linkAction != null) Color(0xFFFDE68A) else if (modem.connected) Color(0xFF86EFAC) else Color(0xFFFCA5A5),
                         )
                     }
                     Text(
