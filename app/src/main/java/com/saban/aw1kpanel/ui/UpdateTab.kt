@@ -107,7 +107,7 @@ internal fun UpdateTab(state: UiState, vm: PanelViewModel) {
                         LinearProgressIndicator(progress = { p }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)))
                         Spacer(Modifier.height(6.dp))
                     }
-                    if (u.steps > 0) Text("%${(u.steps * 100 / TOTAL_STEPS).coerceAtMost(95)} · Adım ${u.steps}/$TOTAL_STEPS", style = MaterialTheme.typography.labelMedium)
+                    if (u.steps > 0) Text("%${if (u.finished && u.ok) 100 else (u.steps * 100 / TOTAL_STEPS).coerceAtMost(95)} · Adım ${u.steps}/$TOTAL_STEPS", style = MaterialTheme.typography.labelMedium)
                     Text(
                         u.label,
                         style = MaterialTheme.typography.bodyMedium,
