@@ -81,10 +81,32 @@ object AppUpdater {
         return http.newCall(b.build()).execute()
     }
 
+    private val httpNoRedirect = http.newBuilder().followRedirects(false).build()
+
+    /** API limiti dolunca: github.com/.../releases/latest yönlendirmesinden etiketi alır (API limiti yok). */
+    private fun latestNoApi(): AppRelease? {
+        val req = Request.Builder().url("https://github.com/$REPO/releases/latest").header("User-Agent", "AW1KPanel").build()
+        val tag = httpNoRedirect.newCall(req).execute().use { r ->
+            r.header("Location")?.substringAfter("/releases/tag/", "")?.substringBefore('?')?.takeIf { it.isNotBlank() }
+        } ?: return null
+        val base = "https://github.com/$REPO/releases/download/$tag"
+        val sha = runCatching {
+            get("$base/AW1KPanel.apk.sha256").use { sr ->
+                Regex("[0-9a-fA-F]{64}").find(sr.body?.string().orEmpty())?.value
+            }
+        }.getOrNull()
+        return AppRelease(
+            version = tag, notes = "", apkName = "AW1KPanel.apk",
+            apkUrl = "$base/AW1KPanel.apk", size = 0L, sha256 = sha,
+        )
+    }
+
     /** En son yayın; yayın ya da APK yoksa null. Ağ hatasında IOException fırlatır. */
     suspend fun latest(): AppRelease? = withContext(Dispatchers.IO) {
         get("https://api.github.com/repos/$REPO/releases/latest", "application/vnd.github+json").use { r ->
             if (r.code == 404) return@withContext null
+            // API'nin IP başına saatlik limiti (60) dolunca 403/429 döner; API'siz yola geç.
+            if (r.code == 403 || r.code == 429) return@withContext latestNoApi()
             if (!r.isSuccessful) throw IOException("GitHub yanıtı ${r.code}")
             val o = JSONObject(r.body?.string().orEmpty())
             val assets = objects(o.optJSONArray("assets"))
