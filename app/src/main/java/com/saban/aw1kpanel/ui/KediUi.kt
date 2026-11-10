@@ -112,6 +112,7 @@ internal fun KTile(
     sub: String? = null,
     bar: Float? = null,
     barColor: Color = MaterialTheme.colorScheme.primary,
+    pct: Int? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -120,7 +121,12 @@ internal fun KTile(
             .background(scheme.surfaceVariant.copy(alpha = 0.65f))
             .padding(horizontal = 14.dp, vertical = 11.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
+            if (pct != null) {
+                Text("%$pct", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = barColor, maxLines = 1)
+            }
+        }
         Text(
             value,
             style = MaterialTheme.typography.titleMedium,

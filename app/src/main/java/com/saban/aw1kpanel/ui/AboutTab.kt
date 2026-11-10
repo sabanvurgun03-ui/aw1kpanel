@@ -22,7 +22,7 @@ import com.saban.aw1kpanel.R
 
 private const val SUPPORT_URL = "https://buymeacoffee.com/sabanvurgun"
 
-internal const val APP_VERSION = "0.47"
+internal const val APP_VERSION = "0.48"
 
 private val APP_FEATURES = listOf(
     "Operatör, ağ tipi (LTE-A / CA) ve sinyal yüzdesi, anlık hız",

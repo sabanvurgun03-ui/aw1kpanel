@@ -286,7 +286,8 @@ private fun SysDetailsBlock(d: com.saban.aw1kpanel.data.SysDetails) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KTile("RAM kullanılan", mb(d.memUsed), Modifier.weight(1f), sub = "toplam ${mb(d.memTotal)}",
-                bar = if (d.memTotal > 0) d.memUsed.toFloat() / d.memTotal else null, barColor = loadColor(if (d.memTotal > 0) (d.memUsed * 100 / d.memTotal).toInt() else 0))
+                bar = if (d.memTotal > 0) d.memUsed.toFloat() / d.memTotal else null, barColor = loadColor(if (d.memTotal > 0) (d.memUsed * 100 / d.memTotal).toInt() else 0),
+                pct = if (d.memTotal > 0) (d.memUsed * 100 / d.memTotal).toInt() else null)
             KTile("RAM önbellek", mb(d.cached), Modifier.weight(1f), sub = "gerektiğinde boşalır")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,6 +302,7 @@ private fun SysDetailsBlock(d: com.saban.aw1kpanel.data.SysDetails) {
                 "Depolama (boş)", d.rootFree?.let { mb(it) } ?: "—", Modifier.weight(1f),
                 sub = d.rootTotal?.let { "toplam ${mb(it)}" },
                 bar = rf, barColor = loadColor(((rf ?: 0f) * 100).toInt()),
+                pct = rf?.let { (it * 100).toInt() },
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -309,6 +311,7 @@ private fun SysDetailsBlock(d: com.saban.aw1kpanel.data.SysDetails) {
                 "Geçici bellek (boş)", d.tmpFree?.let { mb(it) } ?: "—", Modifier.weight(1f),
                 sub = d.tmpTotal?.let { "toplam ${mb(it)}" },
                 bar = tf, barColor = loadColor(((tf ?: 0f) * 100).toInt()),
+                pct = tf?.let { (it * 100).toInt() },
             )
         }
         Column(
