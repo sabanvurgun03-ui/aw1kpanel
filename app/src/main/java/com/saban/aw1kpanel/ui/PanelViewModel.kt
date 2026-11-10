@@ -933,9 +933,16 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Yeniden bağlan/başlat sonrası, bağlantı geri gelene (veya süre dolana) kadar durum yazısını tutar. */
-    private fun watchLink(minMs: Long, maxMs: Long) {
-        viewModelScope.launch {
+    private var linkJob: Job? = null
+
+    /**
+     * Yeniden bağlan/başlat sonrası durum yazısını tutar. Aynı anda tek izleyici çalışır (yenisi eskisini iptal eder).
+     * reboot=true: modem kapanıp geri gelince biter. reboot=false: butondan sonra kurulan yeni mobil oturum görülünce biter.
+     */
+    private fun watchLink(label: String, reboot: Boolean, minMs: Long, maxMs: Long) {
+        linkJob?.cancel()
+        _state.update { it.copy(linkAction = label) }
+        linkJob = viewModelScope.launch {
             val t0 = android.os.SystemClock.elapsedRealtime()
             val c0 = _state.value.modem.connSeconds
             var sawDown = false
@@ -946,47 +953,38 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                 val up = st.modem.connected && st.modemError == null
                 if (!up) sawDown = true
                 val cur = st.modem.connSeconds
-                // Bağlantı süresi biliniyorsa asıl ölçüt: butona basıldıktan SONRA kurulmuş yeni oturum.
-                // (Wi-Fi'nin kısa kopması yeterli sayılmaz.) Süre bilinmiyorsa kopma+dönüş yeterli.
-                val fresh = cur != null && cur <= el / 1000 + 3 && (c0 == null || c0 > el / 1000 + 3 || cur < c0)
-                val done = if (cur != null && c0 != null) fresh else sawDown
+                val fresh = cur != null && c0 != null && cur <= el / 1000 + 3 && (c0 > el / 1000 + 3 || cur < c0)
+                val done = if (reboot) sawDown else if (cur != null && c0 != null) fresh else sawDown
                 if (el >= maxMs || (el >= minMs && up && done)) break
             }
             _state.update { it.copy(linkAction = null) }
         }
     }
 
-    fun redial() {
+    /** Komut sırasında bağlantı kopması (Wi-Fi/ubus) beklenen bir durumdur; gerçek hata değildir. */
+    private fun linkCommand(label: String, reboot: Boolean, minMs: Long, maxMs: Long, okMsg: String, cmd: suspend () -> Unit) {
         viewModelScope.launch {
-            _state.update { it.copy(linkAction = "Yeniden bağlanıyor…") }
-            watchLink(minMs = 6_000, maxMs = 60_000)
+            watchLink(label, reboot, minMs, maxMs)
             try {
-                repo.redial()
-                _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi") }
+                cmd()
+                _state.update { it.copy(message = okMsg) }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: java.io.IOException) {
+                // Bağlantı komutun etkisiyle koptu: yazıyı koru, hata gösterme.
             } catch (e: Exception) {
+                linkJob?.cancel()
                 _state.update { it.copy(message = friendly(e), linkAction = null) }
             }
         }
     }
 
-    fun rebootRouter() {
-        viewModelScope.launch {
-            _state.update { it.copy(linkAction = "Modem yeniden başlatılıyor…") }
-            watchLink(minMs = 15_000, maxMs = 300_000)
-            try {
-                repo.reboot()
-                _state.update {
-                    it.copy(message = "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır")
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _state.update { it.copy(message = friendly(e), linkAction = null) }
-            }
-        }
-    }
+    fun redial() = linkCommand("Yeniden bağlanıyor…", false, 6_000, 60_000, "Yeniden bağlanma komutu gönderildi") { repo.redial() }
+
+    fun rebootRouter() = linkCommand(
+        "Modem yeniden başlatılıyor…", true, 15_000, 300_000,
+        "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır",
+    ) { repo.reboot() }
 
     // ---- VPN profilleri ------------------------------------------------------
 
