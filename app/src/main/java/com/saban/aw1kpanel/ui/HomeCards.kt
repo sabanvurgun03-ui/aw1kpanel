@@ -251,7 +251,7 @@ internal fun HomeSystemCard(s: SystemState?, d: com.saban.aw1kpanel.data.SysDeta
                     Text("⏱", fontSize = 26.sp)
                 }
                 Spacer(Modifier.height(6.dp))
-                Text(homeDuration(s.uptimeSeconds), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(durFull(s.uptimeSeconds, 2), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text("Çalışma süresi", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             }
         }
@@ -396,7 +396,7 @@ internal fun HomeVpnCard(state: UiState, vm: PanelViewModel, onOpenVpn: () -> Un
             }
             if (connected) {
                 Text(
-                    homeDuration(v!!.uptimeSeconds),
+                    durFull(v!!.uptimeSeconds, 2),
                     style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier

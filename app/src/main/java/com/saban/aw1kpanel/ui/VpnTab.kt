@@ -338,7 +338,7 @@ private fun KediCard(
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {
                         Text(
-                            formatUptimeShort(k.uptimeSeconds),
+                            durFull(k.uptimeSeconds, 2),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color.White,
                         )

@@ -699,7 +699,7 @@ private fun NetworkTab(
                 }
                 Spacer(Modifier.height(14.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KGlassTile("Süre", modem.connSeconds?.let { formatUptimeLong(it) } ?: "—", Modifier.weight(1f))
+                    KGlassTile("Süre", modem.connSeconds?.let { durFull(it, 2) } ?: "—", Modifier.weight(1f))
                     KGlassTile("↑ Gönderildi", modem.sentBytes?.let { fmtNetBytes(it) } ?: "—", Modifier.weight(1f))
                     KGlassTile("↓ Alındı", modem.recvBytes?.let { fmtNetBytes(it) } ?: "—", Modifier.weight(1f))
                 }
@@ -766,7 +766,7 @@ private fun NetworkTab(
                 if (vpn != null && vpn.connected) {
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        KTile("Süre", formatUptime(vpn.uptimeSeconds), Modifier.weight(1f))
+                        KTile("Süre", durFull(vpn.uptimeSeconds, 2), Modifier.weight(1f))
                         KTile("↓ İndirme", formatRate(vpn.downlinkRate), Modifier.weight(1f))
                         KTile("↑ Yükleme", formatRate(vpn.uplinkRate), Modifier.weight(1f))
                     }
@@ -842,7 +842,7 @@ private fun WanCard(w: com.saban.aw1kpanel.data.WanInfo) {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KTile("Protokol", w.proto.uppercase().ifEmpty { "—" }, Modifier.weight(1f))
-            KTile("Süre", w.uptime?.let { formatUptimeLong(it) } ?: "—", Modifier.weight(1f))
+            KTile("Süre", w.uptime?.let { durFull(it, 2) } ?: "—", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         KTile("DNS sunucuları", w.dns.joinToString(", ").ifEmpty { "—" }, Modifier.fillMaxWidth())
