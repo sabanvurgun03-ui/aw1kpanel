@@ -945,10 +945,12 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                 val st = _state.value
                 val up = st.modem.connected && st.modemError == null
                 if (!up) sawDown = true
-                // Bağlantı süresi sıfırlandıysa yeni oturum kurulmuş demektir.
                 val cur = st.modem.connSeconds
-                val reset = cur != null && c0 != null && c0 > 20 && cur < c0 - 5
-                if (el >= maxMs || (el >= minMs && up && (sawDown || reset))) break
+                // Bağlantı süresi biliniyorsa asıl ölçüt: butona basıldıktan SONRA kurulmuş yeni oturum.
+                // (Wi-Fi'nin kısa kopması yeterli sayılmaz.) Süre bilinmiyorsa kopma+dönüş yeterli.
+                val fresh = cur != null && cur <= el / 1000 + 3 && (c0 == null || c0 > el / 1000 + 3 || cur < c0)
+                val done = if (cur != null && c0 != null) fresh else sawDown
+                if (el >= maxMs || (el >= minMs && up && done)) break
             }
             _state.update { it.copy(linkAction = null) }
         }
