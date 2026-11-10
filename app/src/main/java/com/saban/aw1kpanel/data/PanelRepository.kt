@@ -1577,6 +1577,25 @@ class PanelRepository(private val client: UbusClient) {
         )
     }
 
+    /** Kurulum bittiyse "güncelleme yüklendi" bilgisini verir (yoksa null). Eski KediRay'de komut yoksa null döner. */
+    suspend fun kediWhatsNew(): WhatsNew? {
+        val r = fileExec("/usr/bin/kediray", "update", "whatsnew")
+        val out = r.optString("stdout").trim()
+        if (!out.startsWith("{")) return null
+        val j = JSONObject(out)
+        // Kurulum henüz bitmedi: sonra tekrar sorulsun (hata sayılır, 10 sn sonra yeniden denenir)
+        if (j.optBoolean("installing")) throw UbusException("kurulum sürüyor")
+        if (!j.optBoolean("pending")) return null
+        val arr = j.optJSONArray("changes")
+        val ch = buildList { if (arr != null) for (i in 0 until arr.length()) add(arr.optString(i)) }.filter { it.isNotBlank() }
+        return WhatsNew(from = j.optString("from"), to = j.optString("to"), changes = ch)
+    }
+
+    /** "Güncelleme yüklendi" bilgisini gördüm diye işaretler (bir daha gösterilmez). */
+    suspend fun kediWhatsNewAck() {
+        fileExec("/usr/bin/kediray", "update", "whatsnew", "ack")
+    }
+
     /** GitHub'dan indirir, SHA256 ile doğrular ve kurulumu başlatır (`kediray update install`). */
     suspend fun kediUpdateInstall(): String {
         kediVer = null

@@ -220,6 +220,9 @@ data class BandGroup(
 data class UpdateLog(val status: String, val steps: Int, val label: String, val log: String)
 
 /** GitHub'da yeni KediRay sürümü var mı (`kediray update check --json`). */
+/** Kurulumdan sonra bir kez gösterilen "güncelleme yüklendi" bilgisi (`kediray update whatsnew`). */
+data class WhatsNew(val from: String, val to: String, val changes: List<String>)
+
 data class UpdateCheck(val ok: Boolean, val current: String, val latest: String, val newer: Boolean, val error: String)
 
 /** `kediray logs` çıktısındaki tek satır. level: error | warn | info | debug. */

@@ -131,3 +131,29 @@ internal fun AppUpdateDialog(u: AppUpdateUi, vm: PanelViewModel) {
         },
     )
 }
+
+
+/** Kurulumdan sonra bir kez: "Güncelleme yüklendi" + sürüm + varsa değişiklikler. */
+@Composable
+internal fun WhatsNewDialog(w: com.saban.aw1kpanel.data.WhatsNew?, vm: PanelViewModel) {
+    if (w == null) return
+    AlertDialog(
+        onDismissRequest = vm::ackWhatsNew,
+        title = { Text("Güncelleme yüklendi") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (w.from == w.to) "KediRay ${w.to}" else "KediRay ${w.from} → ${w.to}",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (w.changes.isNotEmpty()) {
+                    Text("Değişiklikler:", style = MaterialTheme.typography.bodyMedium)
+                    w.changes.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                } else {
+                    Text("Değişiklik notu alınamadı.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = vm::ackWhatsNew) { Text("Tamam") } },
+    )
+}

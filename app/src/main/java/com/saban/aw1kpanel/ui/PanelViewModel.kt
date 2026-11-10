@@ -124,6 +124,8 @@ data class UiState(
     val kediSettingsError: String? = null,
     val kediSettingsSaving: Boolean = false,
     val update: UpdateState = UpdateState(),
+    /** Modemde kurulum bittikten sonra bir kez gösterilen "güncelleme yüklendi" bilgisi. */
+    val whatsNew: com.saban.aw1kpanel.data.WhatsNew? = null,
     val logs: com.saban.aw1kpanel.data.LogData? = null,
     val logsError: String? = null,
     val sms: List<com.saban.aw1kpanel.data.SmsMessage>? = null,
@@ -698,7 +700,19 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Her 10 saniyede çağrılır: Wi-Fi, cihazlar, VPN. Hatalar sessizce geçilir. */
+    @Volatile private var whatsNewChecked = false
+
     suspend fun refreshSlow() {
+        if (!whatsNewChecked) {
+            // Uygulama açılınca (ve her güncellemeden sonra) bir kez: kurulum bittiyse sürüm + değişiklikler gösterilir
+            try {
+                val wn = repo.kediWhatsNew()
+                _state.update { it.copy(whatsNew = wn) }
+                whatsNewChecked = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {}
+        }
         attempt { repo.wifiNetworks() }?.let { w -> _state.update { it.copy(wifi = w) } }
         attempt { repo.guestWifi() }?.let { g -> _state.update { it.copy(guest = g) } }
         attempt { repo.wifiClients(_state.value.wifi) }?.let { c -> _state.update { it.copy(wifiClients = c) } }
@@ -1370,7 +1384,13 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun ackWhatsNew() {
+        _state.update { it.copy(whatsNew = null) }
+        viewModelScope.launch { attempt { repo.kediWhatsNewAck() } }
+    }
+
     private fun finishUpdate(ok: Boolean, text: String) {
+        if (ok) whatsNewChecked = false
         _state.update { it.copy(update = it.update.copy(busy = false, finished = true, ok = ok, label = text, newer = false, checkMsg = ""), message = text) }
     }
 

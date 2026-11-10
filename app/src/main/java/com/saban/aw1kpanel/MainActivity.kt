@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     AppUpdateDialog(state.appUpdate, vm)
+                    WhatsNewDialog(state.whatsNew, vm)
                 }
             }
         }
