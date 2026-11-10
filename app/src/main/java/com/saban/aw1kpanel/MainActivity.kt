@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.saban.aw1kpanel.data.BUILTIN_THEMES
 import com.saban.aw1kpanel.ui.AW1KTheme
 import com.saban.aw1kpanel.ui.AppUpdateDialog
+import com.saban.aw1kpanel.ui.WhatsNewDialog
 import com.saban.aw1kpanel.ui.LoginScreen
 import com.saban.aw1kpanel.ui.MainScreen
 import com.saban.aw1kpanel.ui.OfflineScreen
