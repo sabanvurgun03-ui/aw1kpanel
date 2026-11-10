@@ -736,8 +736,4 @@ private fun rateText(b: Long): String = when {
     else -> "$b B/s"
 }
 
-private fun formatUptimeShort(s: Long): String {
-    val h = s / 3600
-    val m = (s % 3600) / 60
-    return if (h > 0) "${h} sa ${m} dk" else "${m} dk"
-}
+private fun formatUptimeShort(s: Long): String = durFull(s)

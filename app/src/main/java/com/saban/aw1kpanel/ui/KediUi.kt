@@ -280,3 +280,19 @@ internal fun kQualityColor(q: Float?): Color = when {
     q >= 0.3f -> Warn
     else -> Bad
 }
+
+
+/** Süreyi "2 g 3 sa 4 dk 5 sn" biçiminde yazar; baştaki sıfır birimleri atlar. */
+internal fun durFull(total: Long): String {
+    val t = total.coerceAtLeast(0)
+    val d = t / 86400
+    val h = (t % 86400) / 3600
+    val m = (t % 3600) / 60
+    val s = t % 60
+    return buildString {
+        if (d > 0) append("$d g ")
+        if (d > 0 || h > 0) append("$h sa ")
+        if (d > 0 || h > 0 || m > 0) append("$m dk ")
+        append("$s sn")
+    }
+}

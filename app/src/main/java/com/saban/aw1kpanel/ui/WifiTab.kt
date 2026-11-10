@@ -274,12 +274,7 @@ private fun NetworkCard(
     }
 }
 
-private fun fmtSecs(s: Long): String = when {
-    s >= 86400 -> "${s / 86400} g ${s % 86400 / 3600} sa"
-    s >= 3600 -> "${s / 3600} sa ${s % 3600 / 60} dk"
-    s >= 60 -> "${s / 60} dk"
-    else -> "$s sn"
-}
+private fun fmtSecs(s: Long): String = durFull(s)
 
 /** Anlık hız (bayt/sn) -> "3.4 Mb/sn" ya da "512 Kb/sn". */
 private fun liveRate(bytesPerSec: Float): String {

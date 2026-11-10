@@ -508,16 +508,7 @@ private fun fmtNetBytes(b: Long): String = when {
     else -> "$b B"
 }
 
-private fun formatUptimeLong(seconds: Long): String {
-    val d = seconds / 86400
-    val h = (seconds % 86400) / 3600
-    val m = (seconds % 3600) / 60
-    return when {
-        d > 0 -> "${d} g ${h} sa"
-        h > 0 -> "${h} sa ${m} dk"
-        else -> "${m} dk"
-    }
-}
+private fun formatUptimeLong(s: Long): String = durFull(s)
 
 @Composable
 internal fun SectionCard(brush: Brush? = null, content: @Composable ColumnScope.() -> Unit) {
@@ -966,11 +957,7 @@ private fun formatRate(bytesPerSec: Long): String = when {
     else -> "$bytesPerSec B/s"
 }
 
-private fun formatUptime(seconds: Long): String {
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    return if (h > 0) "${h} sa ${m} dk" else "${m} dk"
-}
+private fun formatUptime(s: Long): String = durFull(s)
 
 // ---- Ayarlar sekmesi -----------------------------------------------------
 

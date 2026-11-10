@@ -44,12 +44,7 @@ import com.saban.aw1kpanel.R
 import com.saban.aw1kpanel.data.AppSettings
 import com.saban.aw1kpanel.data.Device
 
-private fun fmtDuration(s: Long): String = when {
-    s >= 86400 -> "${s / 86400} g ${s % 86400 / 3600} sa"
-    s >= 3600 -> "${s / 3600} sa ${s % 3600 / 60} dk"
-    s >= 60 -> "${s / 60} dk"
-    else -> "$s sn"
-}
+private fun fmtDuration(s: Long): String = durFull(s)
 
 private fun devRate(b: Float): String = when {
     b >= 1_048_576f -> "%.1f MB/s".format(b / 1_048_576f)

@@ -132,16 +132,7 @@ private fun homeRate(b: Long): String = when {
     else -> "$b B/s"
 }
 
-private fun homeDuration(s: Long): String {
-    val d = s / 86400
-    val h = (s % 86400) / 3600
-    val m = (s % 3600) / 60
-    return when {
-        d > 0 -> "$d g $h sa"
-        h > 0 -> "$h sa $m dk"
-        else -> "$m dk"
-    }
-}
+private fun homeDuration(s: Long): String = durFull(s)
 
 // ---- 1) Modem kartı --------------------------------------------------------
 
