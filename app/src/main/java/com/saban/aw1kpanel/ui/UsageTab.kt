@@ -96,7 +96,7 @@ internal fun UsageTab(usage: UsageData?, trafficDays: List<TrafficDay> = emptyLi
         .groupBy { YearMonth.from(it.key) }
         .toSortedMap(reverseOrder())
         .entries
-        .take(6)
+        .take(12)
 
     LazyColumn(
         contentPadding = PaddingValues(vertical = 12.dp),
@@ -152,13 +152,37 @@ internal fun UsageTab(usage: UsageData?, trafficDays: List<TrafficDay> = emptyLi
                     Triple(ym, entries.sumOf { it.value.rx }, entries.sumOf { it.value.tx })
                 }
                 val monthMax = (monthTotals.maxOfOrNull { it.second + it.third } ?: 0L).coerceAtLeast(1L)
-                monthTotals.forEach { (ym, rx, tx) ->
+                monthTotals.take(3).forEach { (ym, rx, tx) ->
                     SummaryRow("%02d/%d".format(ym.monthValue, ym.year), rx to tx)
                     LinearProgressIndicator(
                         progress = { ((rx + tx).toFloat() / monthMax).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                     )
                     Spacer(Modifier.height(6.dp))
+                }
+                // 3 aydan eskiler: katlanır, tek satırlık kısa liste.
+                val older = monthTotals.drop(3)
+                if (older.isNotEmpty()) {
+                    var open by remember { mutableStateOf(false) }
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { open = !open }.padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Önceki aylar (${older.size})", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        Text(if (open) "▴" else "▾", color = MaterialTheme.colorScheme.primary)
+                    }
+                    if (open) {
+                        older.forEach { (ym, rx, tx) ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text("%02d/%d".format(ym.monthValue, ym.year), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatBytes(rx + tx), fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
                 }
             }
         }
