@@ -232,6 +232,8 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     }
 
     BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
+    // Ana sayfa dışındaysa geri tuşu ana sayfaya döner; ana sayfadayken uygulamadan çıkar.
+    BackHandler(enabled = !drawer.isOpen && page != 0) { page = 0 }
 
     val routerName = state.routers.firstOrNull { it.id == state.activeRouterId }?.name
 
