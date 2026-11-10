@@ -632,6 +632,37 @@ private fun NetworkTab(
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Modem
+        item {
+            SectionCard {
+                KHeader("Modem", modem.modemName, icon = R.drawable.ic_modem)
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KTile("Sıcaklık", modem.temperature, Modifier.weight(1f))
+                    KTile("Teknoloji", technology(modem), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = { confirmRedial = true },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(painterResource(R.drawable.ic_refresh), null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Yeniden bağlan")
+                    }
+                    OutlinedButton(
+                        onClick = { confirmReboot = true },
+                        modifier = Modifier.weight(1f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Bad.copy(alpha = 0.6f)),
+                    ) {
+                        Icon(painterResource(R.drawable.ic_power), null, Modifier.size(18.dp), tint = Bad)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Yeniden başlat", color = Bad)
+                    }
+                }
+            }
+        }
         // Bağlantı özeti (degrade kart)
         item {
             SectionCard(brush = HeaderBrush) {
@@ -744,29 +775,6 @@ private fun NetworkTab(
         // Arayüzler
         if (net != null && net.ifaces.isNotEmpty()) item { IfacesCard(net.ifaces) }
 
-        // Modem
-        item {
-            SectionCard {
-                KHeader("Modem", modem.modemName, icon = R.drawable.ic_modem)
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KTile("Sıcaklık", modem.temperature, Modifier.weight(1f))
-                    KTile("Teknoloji", technology(modem), Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.FilledTonalButton(
-                        onClick = { confirmRedial = true },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("↻ Yeniden bağlan") }
-                    OutlinedButton(
-                        onClick = { confirmReboot = true },
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Bad.copy(alpha = 0.6f)),
-                    ) { Text("⏻ Yeniden başlat", color = Bad) }
-                }
-            }
-        }
     }
 
     if (confirmVpnOff) {
