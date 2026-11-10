@@ -952,30 +952,32 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
 
     fun redial() {
         viewModelScope.launch {
+            _state.update { it.copy(linkAction = "Yeniden bağlanıyor…") }
+            watchLink(minMs = 6_000, maxMs = 45_000)
             try {
                 repo.redial()
-                _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi", linkAction = "Yeniden bağlanıyor…") }
-                watchLink(minMs = 6_000, maxMs = 45_000)
+                _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi") }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(message = friendly(e)) }
+                _state.update { it.copy(message = friendly(e), linkAction = null) }
             }
         }
     }
 
     fun rebootRouter() {
         viewModelScope.launch {
+            _state.update { it.copy(linkAction = "Modem yeniden başlatılıyor…") }
+            watchLink(minMs = 15_000, maxMs = 300_000)
             try {
                 repo.reboot()
                 _state.update {
-                    it.copy(message = "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır", linkAction = "Modem yeniden başlatılıyor…")
+                    it.copy(message = "Modem yeniden başlatılıyor; birkaç dakika sonra tekrar bağlanır")
                 }
-                watchLink(minMs = 15_000, maxMs = 300_000)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(message = friendly(e)) }
+                _state.update { it.copy(message = friendly(e), linkAction = null) }
             }
         }
     }
