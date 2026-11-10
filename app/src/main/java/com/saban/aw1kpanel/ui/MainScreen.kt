@@ -19,6 +19,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.AnimatedContent
 import android.Manifest
+import android.app.Activity
+import android.os.SystemClock
+import android.widget.Toast
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +84,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -234,6 +238,14 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
     BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
     // Ana sayfa dışındaysa geri tuşu ana sayfaya döner; ana sayfadayken uygulamadan çıkar.
     BackHandler(enabled = !drawer.isOpen && page != 0) { page = 0 }
+    // Ana sayfada: ilk geri uyarı verir, 2 sn içinde ikinci geri uygulamadan çıkar.
+    val backCtx = LocalContext.current
+    var lastBack by remember { mutableLongStateOf(0L) }
+    BackHandler(enabled = !drawer.isOpen && page == 0) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastBack < 2000) (backCtx as? Activity)?.finish()
+        else { lastBack = now; Toast.makeText(backCtx, "Çıkmak için tekrar geri tuşuna bas", Toast.LENGTH_SHORT).show() }
+    }
 
     val routerName = state.routers.firstOrNull { it.id == state.activeRouterId }?.name
 
