@@ -937,6 +937,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
     private fun watchLink(minMs: Long, maxMs: Long) {
         viewModelScope.launch {
             val t0 = android.os.SystemClock.elapsedRealtime()
+            val c0 = _state.value.modem.connSeconds
             var sawDown = false
             while (true) {
                 delay(1000)
@@ -944,7 +945,10 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                 val st = _state.value
                 val up = st.modem.connected && st.modemError == null
                 if (!up) sawDown = true
-                if (el >= maxMs || (el >= minMs && up && sawDown) || (el >= maxMs / 3 && up && maxMs <= 60_000)) break
+                // Bağlantı süresi sıfırlandıysa yeni oturum kurulmuş demektir.
+                val cur = st.modem.connSeconds
+                val reset = cur != null && c0 != null && c0 > 20 && cur < c0 - 5
+                if (el >= maxMs || (el >= minMs && up && (sawDown || reset))) break
             }
             _state.update { it.copy(linkAction = null) }
         }
@@ -953,7 +957,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
     fun redial() {
         viewModelScope.launch {
             _state.update { it.copy(linkAction = "Yeniden bağlanıyor…") }
-            watchLink(minMs = 6_000, maxMs = 45_000)
+            watchLink(minMs = 6_000, maxMs = 60_000)
             try {
                 repo.redial()
                 _state.update { it.copy(message = "Yeniden bağlanma komutu gönderildi") }
