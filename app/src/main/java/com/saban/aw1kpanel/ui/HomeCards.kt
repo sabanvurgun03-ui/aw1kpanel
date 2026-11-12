@@ -407,14 +407,6 @@ internal fun HomeVpnCard(state: UiState, vm: PanelViewModel, onOpenVpn: () -> Un
             }
         }
 
-        if (connected) {
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SpeedTile("↓ İndirme", homeRate(v!!.downlinkRate), Modifier.weight(1f))
-                SpeedTile("↑ Yükleme", homeRate(v.uplinkRate), Modifier.weight(1f))
-            }
-        }
-
         // Sunucu seçimi + ping
         if (k != null) {
             val nodes = k.nodes.filter { it.enabled }
