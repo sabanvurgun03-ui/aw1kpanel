@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -94,7 +95,7 @@ internal fun VpnTab(state: UiState, settings: AppSettings, vm: PanelViewModel) {
         }
         if (settings.showKedi) {
             state.kediray?.let { k ->
-                item { KediCard(k, vm, settings.hideVpnData, state.kediPings, state.kediPinging) }
+                item { KediCard(k, vm, settings.hideVpnData, state.kediPings, state.kediPinging, state.kediBusy) }
             }
         }
         if (!settings.showKedi && !settings.showXray) {
@@ -285,6 +286,7 @@ private fun KediCard(
     hide: Boolean,
     kediPingMap: Map<String, KediPing>,
     kediPinging: Set<String>,
+    kediBusy: String? = null,
 ) {
     var confirmStop by remember { mutableStateOf(false) }
     var deleteNode by remember { mutableStateOf<KediNode?>(null) }
@@ -370,6 +372,22 @@ private fun KediCard(
             Sparkline(downHist, upHist, Modifier.fillMaxWidth().height(64.dp))
         }
 
+        val busy = kediBusy
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (busy != null) {
+                Button(onClick = {}, enabled = false, modifier = Modifier.weight(1f).height(48.dp)) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(when (busy) { "start" -> "Başlatılıyor…"; "stop" -> "Durduruluyor…"; else -> "Yeniden başlatılıyor…" })
+                }
+            } else if (k.running) {
+                FilledTonalButton(onClick = { vm.kedirayAction("restart") }, modifier = Modifier.weight(1f).height(48.dp)) { Text("Yeniden başlat") }
+                OutlinedButton(onClick = { confirmStop = true }, modifier = Modifier.weight(1f).height(48.dp)) { Text("Durdur", color = Bad) }
+            } else {
+                Button(onClick = { vm.kedirayAction("start") }, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Başlat") }
+            }
+        }
+
         val allBusy = "all" in kediPinging
         Row(
             Modifier.fillMaxWidth().padding(top = 4.dp, start = 4.dp),
@@ -435,15 +453,6 @@ private fun KediCard(
                     )
                 }
                 Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (k.running) {
-                FilledTonalButton(onClick = { vm.kedirayAction("restart") }) { Text("Yeniden başlat") }
-                TextButton(onClick = { confirmStop = true }) { Text("Durdur", color = Bad) }
-            } else {
-                Button(onClick = { vm.kedirayAction("start") }) { Text("Başlat") }
             }
         }
     }

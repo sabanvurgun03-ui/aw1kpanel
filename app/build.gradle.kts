@@ -14,7 +14,7 @@ android {
         targetSdk = 35
         // Her derlemede artar: sürüm numarası aynı kalsa da Android güncellemeyi kabul eder.
         versionCode = (System.currentTimeMillis() / 60000L).toInt()
-        versionName = "0.58"
+        versionName = "0.59"
     }
 
     // GitHub derlemesi senin Android Studio debug anahtarınla imzalar (AW1K_KEYSTORE = secret'tan çıkarılan dosya).

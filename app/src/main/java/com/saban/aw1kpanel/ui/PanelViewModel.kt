@@ -85,6 +85,8 @@ data class UiState(
     val modem: ModemState = ModemState(),
     val modemError: String? = null,
     val linkAction: String? = null,
+    /** KediRay başlat/durdur/yeniden başlat sürerken eylem adı (düğmede dönen gösterge için). */
+    val kediBusy: String? = null,
     val system: SystemState? = null,
     val modemdata: List<ModemdataGroup> = emptyList(),
     val modemdataError: String? = null,
@@ -796,6 +798,7 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
 
     fun kedirayAction(action: String) {
         viewModelScope.launch {
+            _state.update { it.copy(kediBusy = action) }
             try {
                 settingsStore.vpnManualOff = action == "stop"
                 repo.kedirayControl(action)
@@ -806,12 +809,22 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
                         else -> "KediRay yeniden başlatılıyor…"
                     })
                 }
-                delay(4000)
-                refreshSlow()
+                // Hedef duruma gelene kadar (en çok ~45 sn) 3 sn arayla yokla; restart için en az 6 sn bekle.
+                val t0 = System.currentTimeMillis()
+                val want = action != "stop"
+                while (true) {
+                    delay(3000)
+                    refreshSlow()
+                    val run = _state.value.kediray?.running == true
+                    val el = System.currentTimeMillis() - t0
+                    if (el > 45_000 || (run == want && (action != "restart" || el >= 6_000))) break
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(message = friendly(e)) }
+            } finally {
+                _state.update { it.copy(kediBusy = null) }
             }
         }
     }

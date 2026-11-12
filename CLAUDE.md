@@ -15,6 +15,7 @@ Repo: sabanvurgun03-ui/aw1kpanel — her push'ta GitHub Actions sürüm (tag = s
 Commit/zip öncesi `app/build`, `build`, `.gradle` sil.
 
 ## Yapılanlar (yeniden eskiye)
+- 0.59: VPN sekmesinde Başlat/Durdur düğmeleri sunucuların üstüne; işlem sürerken düğmede dönen gösterge (`kediBusy`).
 - 0.58: VPN kartındaki çift hız kutuları kaldırıldı; RAM/Depolama/Geçici bellek kutularında % doluluk; süreler "g sa dk sn" (dar yerde 2 birim); Veri sekmesi 12 ay, 3 aydan sonrası açılır liste.
 - 0.5x: Ağ sayfasında "Yeniden bağlanıyor…/Modem yeniden başlatılıyor…" ilerleme yazısı; güncelleme kontrolü GitHub 403'ünde API'siz yedek yol.
 - Ayrıntı: `RELEASE-NOTES-*.md`.
