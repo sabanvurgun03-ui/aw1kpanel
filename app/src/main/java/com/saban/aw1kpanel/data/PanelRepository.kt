@@ -1532,6 +1532,14 @@ class PanelRepository(private val client: UbusClient) {
             JSONObject().put("command", command).put("params", JSONArray().also { a -> args.forEach { a.put(it) } }),
         )
 
+    /** fileExec ile aynı, ama modemin dosya indirdiği uzun çağrılar için okuma süresi 180 sn. */
+    private suspend fun fileExecLong(command: String, vararg args: String): JSONObject =
+        client.call(
+            "file", "exec",
+            JSONObject().put("command", command).put("params", JSONArray().also { a -> args.forEach { a.put(it) } }),
+            longWait = true,
+        )
+
     /** Kurulum dosyasını modeme yükler (parça parça, /tmp/kediray-update.sh'a eklenerek) ve `kediray selfupdate` ile başlatır. Dönen metin: modemin yanıtı. */
     suspend fun kediUploadAndStart(bytes: ByteArray): String {
         val head = String(bytes, 0, minOf(bytes.size, 600), Charsets.UTF_8)
@@ -1599,7 +1607,7 @@ class PanelRepository(private val client: UbusClient) {
     /** GitHub'dan indirir, SHA256 ile doğrular ve kurulumu başlatır (`kediray update install`). */
     suspend fun kediUpdateInstall(): String {
         kediVer = null
-        val r = fileExec("/usr/bin/kediray", "update", "install")
+        val r = fileExecLong("/usr/bin/kediray", "update", "install")
         val out = (r.optString("stdout") + "\n" + r.optString("stderr")).trim()
         if (r.optInt("code") != 0) throw UbusException(out.ifEmpty { "Güncelleme başlatılamadı" })
         return out

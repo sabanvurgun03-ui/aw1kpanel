@@ -31,6 +31,8 @@ class UbusClient {
         .connectTimeout(3, TimeUnit.SECONDS)
         .callTimeout(8, TimeUnit.SECONDS)
         .build()
+    // Modemin GitHub'dan dosya indirdiği çağrılar (güncelleme) 30 sn'den uzun sürebilir.
+    private val slow = http.newBuilder().readTimeout(180, TimeUnit.SECONDS).build()
     private val loginLock = Mutex()
     // uhttpd aynı anda az sayıda isteğe cevap verir; en fazla 2 çağrıyı birlikte gönder.
     private val slots = Semaphore(2)
@@ -60,12 +62,14 @@ class UbusClient {
         obj: String,
         method: String,
         params: JSONObject = JSONObject(),
+        longWait: Boolean = false,
     ): JSONObject = withContext(Dispatchers.IO) {
+        val cl = if (longWait) slow else http
         val c = conn ?: throw UbusException("Giriş yapılmadı")
         slots.withPermit {
             val used = session
             var result = try {
-                rawCall(c.host, used, obj, method, params)
+                rawCall(c.host, used, obj, method, params, cl)
             } catch (e: UbusException) {
                 // JSON-RPC "Access denied" (-32002): oturum geçersiz olabilir (modemde rpcd yeniden başladı, KediRay güncellendi
                 // ya da süre doldu). Son girişten 20 sn geçtiyse yeniden giriş yapıp bir kez daha dene; gerçekten yetki
@@ -75,14 +79,14 @@ class UbusClient {
                     if (session == used && System.currentTimeMillis() - loginAt > 20_000L) doLogin(c)
                 }
                 if (session == used) throw e
-                rawCall(c.host, session, obj, method, params)
+                rawCall(c.host, session, obj, method, params, cl)
             }
             if (result.first == 6) {
                 // Oturum süresi dolmuş olabilir; bir kez yeniden giriş yap.
                 loginLock.withLock {
                     if (session == used) doLogin(c)
                 }
-                result = rawCall(c.host, session, obj, method, params)
+                result = rawCall(c.host, session, obj, method, params, cl)
             }
             if (result.first != 0) {
                 throw UbusException("$obj.$method çağrısı reddedildi (kod ${result.first})", result.first)
