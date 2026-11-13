@@ -412,6 +412,7 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
                         2 -> NetworkTab(
                             state.modem, state.netDetails, state.vpn, state.vpnProfileId != null,
                             vm::setVpn, vm::redial, vm::rebootRouter, state.linkAction,
+                            onSpeedTest = { page = 13 },
                         )
                         3 -> BandLockTab(state, settings, vm)
                         4 -> DevicesTab(state, settings, vm)
@@ -630,6 +631,7 @@ private fun NetworkTab(
     onRedial: () -> Unit,
     onReboot: () -> Unit,
     linkAction: String? = null,
+    onSpeedTest: () -> Unit = {},
 ) {
     var confirmReboot by remember { mutableStateOf(false) }
     var confirmRedial by remember { mutableStateOf(false) }
@@ -639,6 +641,11 @@ private fun NetworkTab(
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item {
+            SectionCard {
+                KNavRow("Hız testi", "Modemin internet hızını ölç, sonuçları sakla", onSpeedTest, emoji = "⚡")
+            }
+        }
         // Modem
         item {
             SectionCard {
