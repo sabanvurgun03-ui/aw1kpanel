@@ -15,6 +15,7 @@ Repo: sabanvurgun03-ui/aw1kpanel — her push'ta GitHub Actions sürüm (tag = s
 Commit/zip öncesi `app/build`, `build`, `.gradle` sil.
 
 ## Yapılanlar (yeniden eskiye)
+- 0.64: Hız testi geçmişinde satıra dokununca detay penceresi; satırlarda "Mbps" birimi.
 - 0.63: GitHub güncellemesinde SocketTimeout hatası: `UbusClient.call(longWait=true)` + `fileExecLong` (`kediray update install`, 180 sn).
 - 0.62: Hız testinde Durdur düğmesi (`stopSpeedTest`, rpcd `speedtest_stop`, KediRay 1.20.3).
 - 0.61: Ağ sayfasına Hız testi kısayol kartı.

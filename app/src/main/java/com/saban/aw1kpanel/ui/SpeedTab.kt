@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -152,6 +153,7 @@ internal fun SpeedTab(state: UiState, vm: PanelViewModel) {
     val st = state.speed
     val last = state.speedHistory.firstOrNull()
     var confirmClear by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<SpeedResult?>(null) }
 
     val shownDown = if (st.phase == "done" || st.phase == "error" || st.phase == "idle") (st.down ?: last?.down) else st.down
     val shownUp = if (st.phase == "done" || st.phase == "error" || st.phase == "idle") (st.up ?: last?.up) else st.up
@@ -260,17 +262,17 @@ internal fun SpeedTab(state: UiState, vm: PanelViewModel) {
         items(state.speedHistory, key = { it.ts }) { r ->
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(scheme.surfaceVariant.copy(alpha = 0.55f))
+                    .clickable { detail = r }
                     .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("↓ " + fmtSpeed(r.down), color = downC, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text("↑ " + fmtSpeed(r.up), color = upC, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(fmtMs(r.ping), color = scheme.onSurfaceVariant, maxLines = 1)
+                        Text("↓ " + fmtSpeed(r.down) + " Mbps", color = downC, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text("↑ " + fmtSpeed(r.up) + " Mbps", color = upC, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                     Text(
-                        dateFmt.format(Date(r.ts)) + listOf(r.server, r.isp).filter { it.isNotBlank() }.joinToString(" · ").let { if (it.isBlank()) "" else " · $it" },
+                        fmtMs(r.ping) + " · " + dateFmt.format(Date(r.ts)) + listOf(r.server, r.isp).filter { it.isNotBlank() }.joinToString(" · ").let { if (it.isBlank()) "" else " · $it" },
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
@@ -289,6 +291,35 @@ internal fun SpeedTab(state: UiState, vm: PanelViewModel) {
                 TextButton(onClick = { vm.clearSpeedHistory(); confirmClear = false }) { Text("Sil", color = Bad) }
             },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Vazgeç") } },
+        )
+    }
+
+    detail?.let { r ->
+        val rows = listOf(
+            "↓ İndirme" to fmtSpeed(r.down) + " Mbps",
+            "↑ Yükleme" to fmtSpeed(r.up) + " Mbps",
+            "Ping" to fmtMs(r.ping),
+            "Titreşim" to fmtMs(r.jitter),
+            "Sunucu" to r.server,
+            "Servis sağlayıcı" to r.isp,
+            "IP" to r.ip,
+        ).filter { it.second.isNotBlank() && it.second != "—" }
+        AlertDialog(
+            onDismissRequest = { detail = null },
+            title = { Text(dateFmt.format(Date(r.ts))) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rows.forEach { (k, v) ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                            Text(k, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.45f))
+                            Text(v, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(0.55f))
+                        }
+                    }
+                    Text("Modemden ölçüldü", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = { TextButton(onClick = { detail = null }) { Text("Kapat") } },
+            dismissButton = { TextButton(onClick = { vm.deleteSpeedResult(r.ts); detail = null }) { Text("Sil", color = Bad) } },
         )
     }
 }
