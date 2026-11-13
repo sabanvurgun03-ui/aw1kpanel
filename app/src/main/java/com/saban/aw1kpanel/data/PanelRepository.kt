@@ -1683,6 +1683,13 @@ class PanelRepository(private val client: UbusClient) {
         client.call("aw1k", "kediray_ctl", JSONObject().put("action", action))
     }
 
+    /** Modemde hız testini başlatır (aw1k-speedtest, KediRay 1.20.2+). */
+    suspend fun speedtestStart() {
+        client.call("aw1k", "speedtest_start")
+    }
+
+    suspend fun speedtestStatus(): SpeedStatus = SpeedStatus.from(client.call("aw1k", "speedtest_status"))
+
     suspend fun vpnState(): VpnState? {
         val k = kediray()
         if (k != null && k.running) {

@@ -87,6 +87,9 @@ data class UiState(
     val linkAction: String? = null,
     /** KediRay başlat/durdur/yeniden başlat sürerken eylem adı (düğmede dönen gösterge için). */
     val kediBusy: String? = null,
+    /** Hız testi: modemin anlık durumu ve telefonda saklanan geçmiş. */
+    val speed: com.saban.aw1kpanel.data.SpeedStatus = com.saban.aw1kpanel.data.SpeedStatus(),
+    val speedHistory: List<com.saban.aw1kpanel.data.SpeedResult> = emptyList(),
     val system: SystemState? = null,
     val modemdata: List<ModemdataGroup> = emptyList(),
     val modemdataError: String? = null,
@@ -144,6 +147,8 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = PanelRepository(UbusClient())
     private val store = CredentialStore(app)
     private val settingsStore = SettingsStore(app)
+    private val speedStore = com.saban.aw1kpanel.data.SpeedStore(app)
+    private var speedJob: Job? = null
     private val scanner = BandScanner(app, repo)
     private var scanJob: Job? = null
 
@@ -1517,6 +1522,71 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         throw e
     } catch (e: Exception) {
         null
+    }
+
+    /** Hız testi geçmişini telefondan yükler (sayfa açılınca). */
+    fun loadSpeedHistory() {
+        if (_state.value.speedHistory.isEmpty()) _state.update { it.copy(speedHistory = speedStore.load()) }
+    }
+
+    /** Modemde hız testini başlatır ve bitene kadar ~1 sn'de bir durumu okur; bitince sonucu kaydeder. */
+    fun startSpeedTest() {
+        if (speedJob?.isActive == true) return
+        speedJob = viewModelScope.launch {
+            _state.update { it.copy(speed = com.saban.aw1kpanel.data.SpeedStatus(phase = "starting")) }
+            try {
+                repo.speedtestStart()
+                val t0 = System.currentTimeMillis()
+                var fails = 0
+                while (true) {
+                    delay(900)
+                    val st = try { repo.speedtestStatus().also { fails = 0 } } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                        if (++fails >= 5) throw e
+                        continue
+                    }
+                    _state.update { it.copy(speed = st) }
+                    if (st.phase == "done") {
+                        val r = com.saban.aw1kpanel.data.SpeedResult(
+                            System.currentTimeMillis(), st.down ?: 0f, st.up ?: 0f, st.ping ?: 0f, st.jitter ?: 0f,
+                            st.isp, st.server, st.ip,
+                        )
+                        val list = (listOf(r) + _state.value.speedHistory).take(200)
+                        speedStore.save(list)
+                        _state.update { it.copy(speedHistory = list) }
+                        break
+                    }
+                    if (st.phase == "error" || st.phase == "idle" && System.currentTimeMillis() - t0 > 5000) break
+                    if (System.currentTimeMillis() - t0 > 90_000) {
+                        _state.update { it.copy(speed = st.copy(phase = "error", error = "Test zaman aşımına uğradı")) }
+                        break
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val m = friendly(e)
+                _state.update {
+                    it.copy(
+                        speed = it.speed.copy(
+                            phase = "error",
+                            error = if (m.contains("Method not found", true) || m.contains("Object not found", true))
+                                "Modemde hız testi yok: KediRay'ı 1.20.2 veya üstüne güncelleyin" else m,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteSpeedResult(ts: Long) {
+        val list = _state.value.speedHistory.filter { it.ts != ts }
+        speedStore.save(list)
+        _state.update { it.copy(speedHistory = list) }
+    }
+
+    fun clearSpeedHistory() {
+        speedStore.save(emptyList())
+        _state.update { it.copy(speedHistory = emptyList()) }
     }
 
     private fun friendly(e: Exception): String = when (e) {

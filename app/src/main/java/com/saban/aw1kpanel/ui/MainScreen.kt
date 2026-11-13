@@ -109,16 +109,16 @@ import kotlinx.coroutines.launch
 /** Menüde gösterim grupları (sayfa numaraları PAGES sırasına göredir). */
 private val DRAWER_GROUPS: List<Pair<String?, List<Int>>> = listOf(
     null to listOf(0),
-    "Ağ" to listOf(1, 2, 4, 5, 3),
+    "Ağ" to listOf(1, 2, 4, 5, 13, 3),
     "Veri" to listOf(8, 9, 12, 7),
     "Sistem" to listOf(6, 10, 11),
 )
 
-private val PAGES = listOf("Ana sayfa", "Wi-Fi", "Ağ", "Band kilidi", "Cihaz", "VPN", "Güncelleme", "Günlük", "Veri", "Modemdata", "Ayarlar", "Hakkında", "SMS")
+private val PAGES = listOf("Ana sayfa", "Wi-Fi", "Ağ", "Band kilidi", "Cihaz", "VPN", "Güncelleme", "Günlük", "Veri", "Modemdata", "Ayarlar", "Hakkında", "SMS", "Hız testi")
 private val PAGE_ICONS = listOf(
     R.drawable.ic_nav_home, R.drawable.ic_nav_wifi, R.drawable.ic_nav_network, R.drawable.ic_nav_band, R.drawable.ic_nav_devices,
     R.drawable.ic_nav_vpn, R.drawable.ic_nav_update, R.drawable.ic_nav_log, R.drawable.ic_nav_data, R.drawable.ic_nav_modemdata, R.drawable.ic_nav_settings,
-    R.drawable.ic_nav_info, R.drawable.ic_nav_sms,
+    R.drawable.ic_nav_info, R.drawable.ic_nav_sms, R.drawable.ic_nav_speed,
 )
 
 /** Çekmece öğesi: seçiliyken mor zemin ve sol çubuk "nefes alıp verir", simge hafifçe büyüyüp küçülür. */
@@ -422,6 +422,7 @@ fun MainScreen(state: UiState, settings: AppSettings, vm: PanelViewModel) {
                         9 -> ModemdataTab(state, vm)
                         10 -> SettingsTab(state, settings, vm)
                         12 -> SmsTab(state, vm)
+                        13 -> SpeedTab(state, vm)
                         else -> AboutTab(state.kediray)
                     }
                 }
