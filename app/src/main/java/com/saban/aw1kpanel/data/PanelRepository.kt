@@ -1688,6 +1688,10 @@ class PanelRepository(private val client: UbusClient) {
         client.call("aw1k", "speedtest_start")
     }
 
+    suspend fun speedtestStop() {
+        client.call("aw1k", "speedtest_stop")
+    }
+
     suspend fun speedtestStatus(): SpeedStatus = SpeedStatus.from(client.call("aw1k", "speedtest_status"))
 
     suspend fun vpnState(): VpnState? {

@@ -1578,6 +1578,17 @@ class PanelViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Çalışan hız testinden vazgeçer: modemde durdurur, sonuç kaydedilmez. */
+    fun stopSpeedTest() {
+        speedJob?.cancel()
+        _state.update { it.copy(speed = com.saban.aw1kpanel.data.SpeedStatus()) }
+        viewModelScope.launch {
+            try { repo.speedtestStop() } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                _state.update { it.copy(message = "Durdurulamadı: " + friendly(e)) }
+            }
+        }
+    }
+
     fun deleteSpeedResult(ts: Long) {
         val list = _state.value.speedHistory.filter { it.ts != ts }
         speedStore.save(list)

@@ -183,17 +183,23 @@ internal fun SpeedTab(state: UiState, vm: PanelViewModel) {
         }
         item { PhaseSteps(st.phase, downC, upC) }
         item {
-            Button(
-                onClick = vm::startSpeedTest,
-                enabled = !st.running,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-            ) {
-                if (st.running) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = scheme.onSurface.copy(alpha = 0.6f))
+            if (st.running) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = vm::stopSpeedTest,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Bad),
+                ) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Bad)
                     Spacer(Modifier.padding(start = 10.dp))
-                    Text("Test sürüyor…", fontWeight = FontWeight.SemiBold)
-                } else {
+                    Text("DURDUR", color = Bad, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+            } else {
+                Button(
+                    onClick = vm::startSpeedTest,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                ) {
                     Text(if (st.phase == "done" || last != null) "TEKRAR TEST ET" else "TESTİ BAŞLAT", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
             }

@@ -15,6 +15,7 @@ Repo: sabanvurgun03-ui/aw1kpanel — her push'ta GitHub Actions sürüm (tag = s
 Commit/zip öncesi `app/build`, `build`, `.gradle` sil.
 
 ## Yapılanlar (yeniden eskiye)
+- 0.62: Hız testinde Durdur düğmesi (`stopSpeedTest`, rpcd `speedtest_stop`, KediRay 1.20.3).
 - 0.61: Ağ sayfasına Hız testi kısayol kartı.
 - 0.60: Hız testi sayfası (`ui/SpeedTab.kt`, `data/SpeedTest.kt`): modemden ölçer (rpcd `speedtest_start/status`, KediRay 1.20.2), geçmiş telefonda (`SpeedStore`).
 - 0.59: VPN sekmesinde Başlat/Durdur düğmeleri sunucuların üstüne; işlem sürerken düğmede dönen gösterge (`kediBusy`).
